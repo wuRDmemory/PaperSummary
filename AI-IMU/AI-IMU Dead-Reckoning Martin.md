@@ -9,7 +9,7 @@
 ## 整体介绍
 a. 本文主要提出了一种方法，能够仅仅使用IMU的航位推算得到较为精准的轨迹，如下图所示：
 
-<img src="/home/ubuntu/Projects/PaperSummary/AI-IMU/imgs/20190530-164749.png" width=500/>
+<img src="imgs/20190530-164749.png" width=500/>
 
 b. 该方法只适用于像汽车一样只能向前跑的系统，因为这样的系统在进行kalman滤波器的时候可以加入动力模型的辅助信息，在这里，辅助信息主要是指系统在侧向$y^{lat}$和与地面垂直的方向$y^{up}$上是没有移动的，文中称之为伪测量；
 
@@ -53,7 +53,7 @@ $$
 $$
 其中系统的输入为IMU的测量值，$\mathbf{R}_{n}^{\mathrm{IMU}}，\mathbf{v}_{n}^{\mathrm{IMU}}，\mathbf{p}_{n}^{\mathrm{IMU}}$是载体在第n步（或者理解为t时刻）的姿态，速度和位置，其中的参考系都是世界坐标系，坐标系的信息如下图:
 
-<img src="/home/ubuntu/Projects/PaperSummary/AI-IMU/imgs/1111.png" width=500>
+<img src="imgs/1111.png" width=500>
 
 可以看到每个变量都是从载体系到世界坐标系的转换，不要被变量上面的IMU所迷惑了；$\mathbf{b}_{n}^{\omega}, \mathbf{b}_{n}^{\mathrm{a}}$是IMU的零偏，$\mathbf{R}_{n}^{\mathrm{c}}, \mathbf{p}_{n}^{\mathrm{c}}$是IMU到载体系的外参矩阵，这里也做作为一个更新量进行了估计。
 
@@ -82,7 +82,7 @@ $$
 ### 系统的整体结构
 整体结构如下图：
 
-<img src="/home/ubuntu/Projects/PaperSummary/AI-IMU/imgs/20190531-131640.png" width=500>
+<img src="imgs/20190531-131640.png" width=500>
 
 整体而言，系统使用IEKF进行状态的估计，而使用神经网络根据IMU的测量值产生出伪量测及其协方差，整个算法中预测阶段的系统噪声的协方差$Q$是固定的，因为都是高斯白噪声。笔者还是比较看好这样的slam系统的，因为个人认为神经网络不是很适合slam这种几何学的问题，而作为辅助的话还是很看好的。
 
@@ -121,13 +121,13 @@ $$
 ## 最终的结果
 论文最终对比了IMLS（以激光雷达数据为基础），双目ORB-SLAM2和纯IMU进行积分的方法，结果如下：
 
-<img src="/home/ubuntu/Projects/PaperSummary/AI-IMU/imgs/20190531-150310.png" width=900>
+<img src="imgs/20190531-150310.png" width=900>
 
 结论还是很强势的，毕竟只是使用IMU的数据进行航位推算，最终能达到比ORB-SLAM2的效果还要还一点也确实很不错了。
 
 除此之外，还记得作者设计网络时候的三个动机吗？作者也把其中第二个动机进行了验证，结果如下图：
 
-<img src="/home/ubuntu/Projects/PaperSummary/AI-IMU/imgs/2019-05-31-15-08-18.png" width=500>
+<img src="imgs/2019-05-31-15-08-18.png" width=500>
 
 恩～果然在转弯的时候，方差出现了变化。
 
