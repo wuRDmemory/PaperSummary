@@ -1,6 +1,8 @@
-# IMU-Model
+# VIO学习(1)——IMU-Model
 
-这次来详细总结一下IMU的一些东西，主要包含：
+### 写在前面
+
+这次来总结一下IMU的一些东西，主要包含：
 
 - 测量模型
 - 运动模型
@@ -60,9 +62,19 @@ $$
 
 说起运动模型，首先就要确立状态变量，IMU的状态变量比较多，为如下形式：
 $$
-X=[^WP_I^T, ^WV_I^T, {Q_I^W}^T, b_a^T, b_w^T]^T
+X=[^WP_I^T, ^WV_I^T, {q_I^W}^T, b_a^T, b_w^T]^T
 $$
 除了正常的位姿之外，IMU的模型中添加了速度和零偏的估计值，对应的运动模型为：
 
+$$
+\left\{\begin{array}{l}{^W\dot{p}=^Wv} \\ {^W\dot{v}=R_{I}^{W}\left(^Ia_{m}-b_{a}-n_{a}\right)} \\ {\dot{q}_I^W=q_I^W \otimes q\left(^Iw_{m}-b_{w}-n_{w}\right)} \\ {\dot{b}_{a}=n_{ad}} \\ {\dot{b}_{w}=n_{wd}}\end{array}\right.
+$$
+注意上式的$p, v$都在参考坐标系W下，而旋转使用四元数表示，关于四元数更多的内容，可以查看[here](<https://blog.csdn.net/wubaobao1993/article/details/84327700>)
 
 
+
+## reference
+
+> <https://fzheng.me/2016/11/20/imu_model_eq/>
+>
+> <https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model>
