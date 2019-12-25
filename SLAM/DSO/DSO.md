@@ -155,13 +155,13 @@ DSO的边缘化帧选取也比较简单，设$I_1,I_2,...,I_n$是窗口中的关
 
 该章节主要分为三个部分：1）标定；2）模型；3）边缘化。下面依次总结；
 
-##### 相机的几何标定
+#### 相机的几何标定
 
 DSO使用小孔相机+径向失真的模型来表示相机，有如下公式，其中c表示相机的内参：
 
 $$\Pi_{\mathrm{c}}: \mathbb{R}^{3} \rightarrow \Omega$$
 
-##### 相机的光度标定
+#### 相机的光度标定
 
 DSO中采用的光度响应模型如下公式所述：
 
@@ -186,7 +186,7 @@ $$I_{i}^{\prime}(\mathbf{x}):=t_{i} B_{i}(\mathbf{x})=\frac{G^{-1}\left(I_{i}(\m
 
 简单说，对于某个点x，首先逆推回光度值，然后消除渐晕的影响，就是sensor感受到真实的能量值，这个值相比于灰度值要更加的robust。
 
-##### 模型公式
+#### 模型公式
 
 在开头就介绍过，DSO采用光度误差的方法进行优化，自然，这里光度误差也是对一个像素块的光度误差求和，正常情况下的公式如下：
 
@@ -200,12 +200,57 @@ $$E_{\mathbf{p} j}:=\sum_{\mathbf{p} \in \mathcal{N}_{\mathbf{p}}} w_{\mathbf{p}
 
 **但是**，如果我们并不知道光度校正模型呢？作者就也想用类似与$G(t_iV(x)B_i(x))=I$的方式来反过来获得**观测点的能量与曝光时间的乘积**，但是光度响应函数本身是一个非线性的函数，渐晕模型也是一个非线性的模型，为了简单起见（可以简单认为稍微校正一下总比什么都不做好得多），作者把这部分建模为线性模型：$I_i(p)=k(t_iB(x)+b)$，**如果我们连$t_i$也不知道**，那么模型就变为$I_i(p)=k^{\prime}B(x)+b^{\prime}$，其中$k^{\prime}=k*t_i, b^{\prime}=k*b$。
 
-**所以**，综上所述，把两个考虑都加进来之后，光度误差公式就变作，其中，作者为了将k限制为正，并且去除求导变得越来越小的现象，把$k$处理为$e^a$的形式：
+**所以**，综上所述，把两个考虑都加进来之后，光度误差公式就变作如下形式，其中，作者为了将k限制为正，并且去除求导变得越来越小的现象，把$k$处理为$e^a$的形式：
 
 $$E_{\mathbf{p} j}:=\sum_{\mathbf{p} \in \mathcal{N}_{\mathbf{p}}} w_{\mathbf{p}}\left\|\left(I_{j}\left[\mathbf{p}^{\prime}\right]-b_{j}\right)-\frac{t_{j} e^{a_{j}}}{t_{i} e^{a_{i}}}\left(I_{i}[\mathbf{p}]-b_{i}\right)\right\|_{\gamma}$$
 
 因此在使用的时候，会有如下几种情况：
 
-- 知道光度校正模型，那么就把上述中的$I_i$通过公式转化为观测点的能量与曝光时间的乘积，此时即使会有线性模型的校正，两个数也会很小；
-- 如果不知道光度校正模型，不管是否知道曝光时间，那么都用线性模型进行校正；
+- 知道光度校正模型，那么就把上述中的$I_i$通过公式转化为观测点的能量与曝光时间的乘积，此时作者加入了一个线性矫正系数的正则项$E_{\text {prior }}:=\sum_{i \in \mathcal{F}}\left(\lambda_{a} a_{i}^{2}+\lambda_{b} b_{i}^{2}\right)$，以此来迫使$a, b$两数是一个很小的数字；
+- 如果不知道光度校正模型，那么都用线性模型进行校正，即$\lambda_a, \lambda_b$为0；
 
+最后就剩下一个权重系数了，作者给出的形式为如下形式：
+
+$$w_{\mathbf{p}}:=\frac{c^{2}}{c^{2}+\left\|\nabla I_{i}(\mathbf{p})\right\|_{2}^{2}}$$
+
+当该点的梯度特别大的时候，权重相反变得比较小，c为常数。
+
+#### 滑动窗口优化方法
+
+DSO系统采用滑动窗口的方法对位姿进行局部优化，上文中也讲了DSO边缘化一帧时候满足的条件，这部分主要是讲解当老帧被踢出去的时候，算法做了些什么。
+
+##### First Estimate Jacobian
+
+DSO使用FEJ的方法来保证信息的不丢失，这里对论文中的公式进行一些说明：
+
+> Notations:
+>
+> 1. 使用$\zeta \in \mathrm{SE}(3)^{n} \times \mathbb{R}^{m}$来表示所有的优化变量；
+> 2. 使用$\boldsymbol{x} \in \mathfrak{s e}(3)^{n} \times \mathbb{R}^{m}$来表示更新的$\delta$量；
+
+根据FEJ，新的优化参数一定是以被边缘化时优化参数为起点，所以残差公式如下：
+
+$$\begin{aligned}
+r_{k} &=r_{k}\left(\boldsymbol{x} \mathbb{+} \boldsymbol{\zeta}_{0}\right) \\
+&=\left(I_{j}\left[\mathbf{p}^{\prime}\left(\mathbf{T}_{i}, \mathbf{T}_{j}, d, \mathbf{c}\right)\right]-b_{j}\right)-\frac{t_{j} e^{a_{j}}}{t_{i} e^{a_{i}}}\left(I_{i}[\mathbf{p}]-b_{i}\right)
+\end{aligned}$$
+
+公式中的所有优化参数（位姿、光度参数）均是当前的优化参数，即$\left(\mathbf{T}_{i}, \mathbf{T}_{j}, d, \mathbf{c}, a_{i}, a_{j}, b_{i}, b_{j}\right):=\boldsymbol{x}+{\zeta_0}$，所以相应的Jacobian为：
+
+$$\mathbf{J}_{k}=\frac{\partial r_{k}\left((\boldsymbol{\delta}+\boldsymbol{x}) +\mathbb{\zeta}_{0}\right)}{\partial \boldsymbol{\delta}}$$
+
+相应的，在计算Jacobian时要把$x$设置为0，也就是要在变量被边缘化时候的估计量$\zeta_0$。例如在k时刻，边缘化了$U$帧，关联帧为$\Lambda$，无关帧为$V$，记此时的估计量为$\zeta_0$，那么在之后的优化过程中，$\Lambda$的线性化点是不能变的，要保持k时刻的参数$\zeta_{0U}$，而通过增量方程计算出来的增量用来更新无关帧的参数$\zeta_{0V}$；直到下一个k+n时刻，又进行了边缘化，此时又固定了$V$中的一些点，重新有了$\zeta_0$.
+
+![](pictures/DSO3.png)
+
+
+
+----
+
+### Summary
+
+这里总结一下整个DSO的特点：
+
+1. DSO是直接稀疏法的视觉里程计系统，使用图像中部分的关键点进行光度误差模型的优化；
+2. 整个参数空间包含相机位姿，光度模型参数，观测点的逆深度；
+3. 使用划窗的方式进行局部的位姿优化，该优化使用FEJ的方法保证不破坏系统的客观性，使用边缘化加速
