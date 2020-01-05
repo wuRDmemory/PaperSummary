@@ -14,11 +14,15 @@ DSO的初始化着实是十分的难看懂，个人总结为以下三个原因�
 
 
 
+---
+
 ## 优化的模型
 
 整个优化的能量函数（也就是我们常说的误差函数）分为两个部分：一部分是光度误差；另一部分是为了帮助收敛而添加的正则项（虽然我不明白为啥添加一个能帮助收敛）；下面分两部分来说这两个部分：
 
-### 光度误差
+
+
+### 第一部分——光度误差
 
 光度误差模型如下：
 $$
@@ -51,9 +55,16 @@ $$
 P_j = T_{i}^{j}\begin{bmatrix}Pi \\ \rho\end{bmatrix} = R_{j}^{i}P_i+\rho t_{i}^{j}
 \end{aligned}
 $$
-恩，这时候对逆深度求导就舒服多了。下面分两个小部分对几何部分求导：
+恩，这时候对逆深度求导就舒服多了。
 
-**首先是对相机位姿求导**：
+
+
+#### 几何误差部分求导
+
+下面分两个小部分对**几何部分**求导：
+
+1. 对相机位姿求导：
+
 $$
 \begin{aligned}
 J_{geo}&=\frac{\partial{e}}{\partial T_{ji}}=\frac{\partial{e}}{\partial I_j}\frac{\partial{p_{j}}}{\partial P_j}\frac{\partial{P_{j}}}{\partial T_{ji}}  \\
@@ -74,7 +85,8 @@ $$
 > \end{aligned}
 > $$
 
-**接下来是对逆深度进行求导**：
+2. 对逆深度进行求导：
+
 $$
 \begin{aligned}
 J_{geo}&=\frac{\partial{e}}{\partial \rho}=\frac{\partial{e}}{\partial I_j}\frac{\partial{p_{j}}}{\partial P_j}\frac{\partial{P_{j}}}{\partial \rho}  \\
@@ -82,3 +94,187 @@ J_{geo}&=\frac{\partial{e}}{\partial \rho}=\frac{\partial{e}}{\partial I_j}\frac
 &=\nabla{I_j(p_{j})}\begin{bmatrix} \frac{fx}{Z} & 0 & -\frac{fxX}{Z^2} \\ 0 & \frac{fy}{Z} & -\frac{fyY}{Z^2}\end{bmatrix}\mathbf{t_i^j}
 \end{aligned}
 $$
+
+
+
+#### 第二部分——光度校正参数
+
+由于是初始化阶段，$a_i，b_i$都为0，所以仅仅对当前帧$j$的参数进行丢到就行了，过程比较简单，如下：
+$$
+\begin{aligned}
+J_{photo}&=\frac{\partial{e}}{\partial\begin{bmatrix}a_j \\ b_j\end{bmatrix}} \\
+&=\begin{bmatrix} -\frac{t_{j} e^{a_{j}}}{t_{i} e^{a_{i}}}\left(I_{i}[\mathbf{p}]-b_{i}\right) & -1\end{bmatrix}
+\end{aligned}
+$$
+
+
+上面的部分对应DSO代码的中如下：
+
+```c++
+int dx = patternP[idx][0];
+int dy = patternP[idx][1];
+
+// 这边公式用的是齐次的公式，也就是Pc=K*T*Pw, Pw=[x y 1 \rho]^T
+Vec3f pt = RKi * Vec3f(point->u + dx, point->v + dy, 1) + t * point->idepth_new;
+
+// 投影到当前帧
+float u = pt[0] / pt[2];
+float v = pt[1] / pt[2];
+float Ku = fxl * u + cxl;
+float Kv = fyl * v + cyl;
+
+// 中间变量
+float new_idepth = point->idepth_new / pt[2];
+
+if (!(Ku > 1 && Kv > 1 && Ku < wl - 2 && Kv < hl - 2 && new_idepth > 0)) {
+    isGood = false;
+    break;
+}
+
+// 得到插值后的值
+// hitColor是一个vector3f，[0]：gray value，[1]: gradientX，[2]: gradientY
+Vec3f hitColor = getInterpolatedElement33(colorNew, Ku, Kv, wl);
+//Vec3f hitColor = getInterpolatedElement33BiCub(colorNew, Ku, Kv, wl);
+
+//float rlR = colorRef[point->u+dx + (point->v+dy) * wl][0];
+// 得到插值之后的灰度值
+float rlR = getInterpolatedElement31(colorRef, point->u + dx, point->v + dy, wl);
+
+if (!std::isfinite(rlR) || !std::isfinite((float) hitColor[0])) {
+    isGood = false;
+    break;
+}
+
+// 得到光度误差，有huber函数
+float residual = hitColor[0] - r2new_aff[0] * rlR - r2new_aff[1];
+float hw = fabs(residual) < setting_huberTH ? 1 : setting_huberTH / fabs(residual);
+energy += hw * residual * residual * (2 - hw);
+
+// 中间变量，为雅可比做准备，主要针对深度的jacobian
+float dxdd = (t[0] - t[2] * u) / pt[2];
+float dydd = (t[1] - t[2] * v) / pt[2];
+
+if (hw < 1) hw = sqrtf(hw);
+float dxInterp = hw * hitColor[1] * fxl;
+float dyInterp = hw * hitColor[2] * fyl;
+
+// 0-5是6FOD(位姿) 
+dp0[idx] = new_idepth * dxInterp;
+dp1[idx] = new_idepth * dyInterp;
+dp2[idx] = -new_idepth * (u * dxInterp + v * dyInterp);
+dp3[idx] = -u * v * dxInterp - (1 + v * v) * dyInterp;
+dp4[idx] = (1 + u * u) * dxInterp + u * v * dyInterp;
+dp5[idx] = -v * dxInterp + u * dyInterp;
+
+// 对光度系数a b进行求导
+dp6[idx] = -hw * r2new_aff[0] * rlR;
+dp7[idx] = -hw * 1;
+
+// 逆深度的求导
+dd[idx] = dxInterp * dxdd + dyInterp * dydd;
+
+// insentity error
+r[idx] = hw * residual;
+```
+
+
+
+### 第二部分——正则项
+
+为了使得整个优化过程能够快速收敛，作者在整个误差方程中添加了L2正则项，根据位移的不同，添加的正则项也是不同的，整体的能量函数变为：
+
+1. 当位移比较小的时候：
+
+$$
+E = E_{proj}+ \alpha_w(\underbrace{\left( d_{p_i}-1 \right)^2}_{H_{vv} part} + \underbrace{ \left\| t_i^j \right\|^22*N}_{H_{uu} part})
+$$
+
+2. 当位移较大的时候：
+   $$
+   E = E_{proj}+ 1*(\underbrace{\left\| d_{p_i}-d_{IR} \right\|^2}_{H_{vv} part})
+   $$
+
+注意，这里能量函数是误差$e(x)$的平方，所以在求导Jacobian的时候，要用$e=d_{p_i}-1$或者$e=d_{d_i}-d_{IR}$.
+
+这部分对应的代码为，由于这部分还涉及到schur补的构建，这个下部分会介绍，：
+
+```c++
+Accumulator11 EAlpha;
+EAlpha.initialize();
+for (int i = 0; i < npts; i++) {
+    Pnt *point = ptsl + i;
+    if (!point->isGood_new) {
+        E.updateSingle((float) (point->energy[1]));
+    } else {
+        point->energy_new[1] = (point->idepth_new - 1) * (point->idepth_new - 1);
+        E.updateSingle((float) (point->energy_new[1]));
+    }
+}
+EAlpha.finish();
+float alphaEnergy = alphaW * (EAlpha.A + refToNew.translation().squaredNorm() * npts);
+
+// compute alpha opt.
+float alphaOpt;
+if (alphaEnergy > alphaK * npts) {
+    alphaOpt = 0;
+    alphaEnergy = alphaK * npts;
+} else {
+    alphaOpt = alphaW;
+}
+
+acc9SC.initialize();
+for (int i = 0; i < npts; i++) {
+    Pnt *point = ptsl + i;
+    if (!point->isGood_new)
+        continue;
+
+    point->lastHessian_new = JbBuffer_new[i][9];
+	
+    // 当位移较小的时候，添加||dp-1||_2
+    // 注意alphaOpt是权重，相当于要加权两个H矩阵
+    JbBuffer_new[i][8] += alphaOpt * (point->idepth_new - 1); 
+    JbBuffer_new[i][9] += alphaOpt;
+
+    if (alphaOpt == 0) {
+        // 当位移较大的时候，添加||dp-diR||_2
+        JbBuffer_new[i][8] += couplingWeight * (point->idepth_new - point->iR);
+        JbBuffer_new[i][9] += couplingWeight;
+    }
+	
+    // 这里为什么要加1？
+    JbBuffer_new[i][9] = 1 / (1 + JbBuffer_new[i][9]);
+    acc9SC.updateSingleWeighted(
+        (float) JbBuffer_new[i][0], (float) JbBuffer_new[i][1], (float) JbBuffer_new[i][2],
+        (float) JbBuffer_new[i][3],
+        (float) JbBuffer_new[i][4], (float) JbBuffer_new[i][5], (float) JbBuffer_new[i][6],
+        (float) JbBuffer_new[i][7],
+        (float) JbBuffer_new[i][8], (float) JbBuffer_new[i][9]);
+}
+
+acc9SC.finish();
+
+H_out = acc9.H.topLeftCorner<8, 8>();// / acc9.num;
+b_out = acc9.H.topRightCorner<8, 1>();// / acc9.num;
+H_out_sc = acc9SC.H.topLeftCorner<8, 8>();// / acc9.num;
+b_out_sc = acc9SC.H.topRightCorner<8, 1>();// / acc9.num;
+
+H_out(0, 0) += alphaOpt * npts;
+H_out(1, 1) += alphaOpt * npts;
+H_out(2, 2) += alphaOpt * npts;
+
+Vec3f tlog = refToNew.log().head<3>().cast<float>();
+b_out[0] += tlog[0] * alphaOpt * npts;
+b_out[1] += tlog[1] * alphaOpt * npts;
+b_out[2] += tlog[2] * alphaOpt * npts;
+```
+
+
+
+---
+
+## Schur补方程的构建
+
+笔者在开始的时候就比较吐槽这个部分，因为作者在求解Jacobian的时候就在构建Schur补要用的各项矩阵，笔者在看代码的时候感到着实不好理解，所以这部分也重点记录一下：
+
+### 理论部分
+
