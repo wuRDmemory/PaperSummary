@@ -41,5 +41,14 @@ $$
 $$
 e(T_{ij}, \rho_p, a_i, b_i, a_j, b_j)=\left(I_{j}\left[\mathbf{p}^{\prime}\right]-\frac{t_{j} e^{a_{j}}}{t_{i} e^{a_{i}}}I_{i}[\mathbf{p}]\right)-\left(b_{j}-\frac{t_{j} e^{a_{j}}}{t_{i} e^{a_{i}}}b_{i}\right)
 $$
-对于初始化过程来说，$a_i, b_i$都是0，因此可以只计算$j$帧的参数就可以了。
-
+对于初始化过程来说，$a_i, b_i$都是0，因此可以只计算$j$帧的参数就可以了，在求解Jacobian之前，一个需要注意的细节就是在DSO中，作者使用的transform公式与常规的不太一样，对于一个3D点$dP_c$（其中$d$为该点的实际深度，$Pc$为该点在主导帧归一化平面上的坐标），通常使用如下的公式进行坐标系之间的变换，如果使用的是逆深度，通常也是把逆深度作为分母：
+$$
+P_j = T_{i}^{j}\times [dPi， 1]^{T} = dR_{j}^{i}P_i+t_{i}^{j}
+$$
+但是DSO中对于这块的处理个人感觉还是比较好的，作者把3D点的齐次坐标改写为$\overline{P_i}=[P_i, \rho]^T$的形式，即添加的齐次项并不为1，但是本身齐次坐标就没有尺度的概念，因此是完全正确的，所以使用这种形式的话，整个transform过程变作：
+$$
+\begin{aligned}
+P_j = T_{i}^{j}\times [Pi， \rho]^{T} = R_{j}^{i}P_i+\rho t_{i}^{j}
+\end{aligned}
+$$
+恩，求导舒服多了。                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
