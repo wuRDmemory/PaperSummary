@@ -272,9 +272,48 @@ b_out[2] += tlog[2] * alphaOpt * npts;
 
 ---
 
-## Schur补方程的构建
+## 边缘化（这里的边缘化是为了加速求解增量方程）
 
-笔者在开始的时候就比较吐槽这个部分，因为作者在求解Jacobian的时候就在构建Schur补要用的各项矩阵，笔者在看代码的时候感到着实不好理解，所以这部分也重点记录一下：
+笔者在开始的时候就比较吐槽这个部分，因为作者在求解Jacobian的时候就在构建Schur补要用的各项矩阵用于边缘化，笔者在看代码的时候感到着实不好理解，所以这部分也重点记录一下：
 
 ### 理论部分
+
+对于一个点$P_i$，其投影误差的Jacobian可以分为$\alpha$和$\beta$两个部分，其中$\alpha$部分是要保留的部分，这里是位姿和光度校正参数，$\beta$为边缘化掉的部分，这里为逆深度参数，公式如下：
+$$
+J_{n\times1} = [J_{\alpha}, J_{\beta}]
+$$
+所以对于增量方程有：
+$$
+\begin{bmatrix}H_{\alpha \alpha} & H_{\alpha \beta} \\ H_{\alpha \beta}^T & H_{\beta \beta}\end{bmatrix}\begin{bmatrix}\delta{x_{\alpha}} \\ \delta{x_{\beta}} \end{bmatrix} = \begin{bmatrix}b_{\alpha} \\ b_{\beta} \end{bmatrix}
+$$
+其中：
+$$
+\begin{aligned}
+H_{\alpha \alpha}&=J_{\alpha}^T J_{\alpha} \\
+H_{\alpha \beta} &=J_{\alpha}^T J_{\beta} \\
+H_{\beta \beta}  &=J_{\beta}^T J_{\beta} \\
+\end{aligned}
+$$
+这部分在代码中为，其中dp0-7是$\alpha$部分，$r$是误差，最终矩阵的大小为$9\times9$，前$8\times8$为$H_{\alpha \alpha}=J_{alpha}^{T} J_{alpha}$，最后一列为$b_{\alpha}=J_{\alpha}^T e$：
+
+```c++
+for (int i = 0; i + 3 < patternNum; i += 4)
+    acc9.updateSSE(
+    _mm_load_ps(((float *) (&dp0)) + i),
+    _mm_load_ps(((float *) (&dp1)) + i),
+    _mm_load_ps(((float *) (&dp2)) + i),
+    _mm_load_ps(((float *) (&dp3)) + i),
+    _mm_load_ps(((float *) (&dp4)) + i),
+    _mm_load_ps(((float *) (&dp5)) + i),
+    _mm_load_ps(((float *) (&dp6)) + i),
+    _mm_load_ps(((float *) (&dp7)) + i),
+    _mm_load_ps(((float *) (&r)) + i));
+
+// 处理剩下的数据，因为pattern有时候是奇数
+for (int i = ((patternNum >> 2) << 2); i < patternNum; i++)
+    acc9.updateSingle(
+    (float) dp0[i], (float) dp1[i], (float) dp2[i], (float) dp3[i],
+    (float) dp4[i], (float) dp5[i], (float) dp6[i], (float) dp7[i],
+    (float) r[i]);
+```
 
