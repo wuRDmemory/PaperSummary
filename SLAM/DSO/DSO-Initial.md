@@ -10,7 +10,11 @@ DSO的初始化着实是十分的难看懂，个人总结为以下三个原因�
 - 本身的光度模型就比较麻烦，而且有些公式也没有采用常规的方法（又是目光短浅），所以初看起来会比较“反常识”；
 - 作者写代码确实很厉害，基本上优化过程都是自己写的，而且schur补的变量都是边求解Jacobian边构建的，最后直接一个简单的运算；
 
-这篇文章主要是总结一下自己在看初始化代码的过程，希望能帮助更多的小伙伴。
+这篇文章主要是总结一下自己在看初始化代码的过程（主要是CoarseInitializer::trackFrame代码部分），希望能帮助更多的小伙伴。由于作者是在构建Jacobian的时候就在构建边缘化的东西了，且正则项的影响是在构建Schur补用到的矩阵之后加入的，所以推荐的阅读顺序为：
+
+1. 第一部分——光度误差
+2. 边缘化
+3. 第二部分——正则项
 
 
 
@@ -97,7 +101,7 @@ $$
 
 
 
-#### 第二部分——光度校正参数
+#### 光度校正参数求导
 
 由于是初始化阶段，$a_i，b_i$都为0，所以仅仅对当前帧$j$的参数进行丢到就行了，过程比较简单，如下：
 $$
@@ -186,7 +190,7 @@ r[idx] = hw * residual;
 1. 当位移比较小的时候：
 
 $$
-E = E_{proj}+ \alpha_w(\underbrace{\left( d_{p_i}-1 \right)^2}_{H_{vv} part} + \underbrace{ \left\| t_i^j \right\|^22*N}_{H_{uu} part})
+E = E_{proj}+ \alpha_w(\underbrace{\left( d_{p_i}-1 \right)^2}_{H_{vv} part} + \underbrace{ \left\| t_i^j \right\|^2*N}_{H_{uu} part})
 $$
 
 2. 当位移较大的时候：
@@ -194,9 +198,12 @@ $$
    E = E_{proj}+ 1*(\underbrace{\left\| d_{p_i}-d_{IR} \right\|^2}_{H_{vv} part})
    $$
 
-注意，这里能量函数是误差$e(x)$的平方，所以在求导Jacobian的时候，要用$e=d_{p_i}-1$或者$e=d_{d_i}-d_{IR}$，.
+注意，这里能量函数是误差$e(x)$的平方，所以在求导Jacobian的时候，要用$e=d_{p_i}-1$，$e=t_i^j$ 或者$e=d_{d_i}-d_{IR}$，所以：
 
-这部分对应的代码为，由于这部分还涉及到schur补的构建，这个下部分会介绍，：
+1. 当位移比较小的时候，1）正则项对于逆深度（$H_\beta$部分）的Jacobian为单位向量$I$，对于位移（$t_i^j$，$H_\alpha$部分）的Jacobian依旧为单位向量$I$。2）正则项对于$J^Tb$的影响为$I^T\times e$；
+2. 当位移很大的时候，按上面的同理可得对于$H$矩阵和$b$向量的影响，这里不再赘述；
+
+这部分对应的代码为，由于这部分还涉及到Schur补的构建，这个在后面部分会介绍：
 
 ```c++
 Accumulator11 EAlpha;
@@ -240,16 +247,17 @@ for (int i = 0; i < npts; i++) {
         JbBuffer_new[i][8] += couplingWeight * (point->idepth_new - point->iR);
         JbBuffer_new[i][9] += couplingWeight;
     }
-	
-    // 这里为什么要加1？
-    JbBuffer_new[i][9] = 1 / (1 + JbBuffer_new[i][9]);
-    acc9SC.updateSingleWeighted(
-        (float) JbBuffer_new[i][0], (float) JbBuffer_new[i][1], (float) JbBuffer_new[i][2],
-        (float) JbBuffer_new[i][3],
-        (float) JbBuffer_new[i][4], (float) JbBuffer_new[i][5], (float) JbBuffer_new[i][6],
-        (float) JbBuffer_new[i][7],
-        (float) JbBuffer_new[i][8], (float) JbBuffer_new[i][9]);
 }
+
+// 将位移较小情况的正则项加入
+H_out(0, 0) += alphaOpt * npts;
+H_out(1, 1) += alphaOpt * npts;
+H_out(2, 2) += alphaOpt * npts;
+
+Vec3f tlog = refToNew.log().head<3>().cast<float>();
+b_out[0] += tlog[0] * alphaOpt * npts;
+b_out[1] += tlog[1] * alphaOpt * npts;
+b_out[2] += tlog[2] * alphaOpt * npts；
 ```
 
 
@@ -341,7 +349,7 @@ JbBuffer_new[i][9] += dd[idx] * dd[idx];
 ```c++
 // 因为H_beta是对角矩阵，因此逆为个元素分之1，但是没有搞懂为啥分母多加了1
 JbBuffer_new[i][9] = 1 / (1 + JbBuffer_new[i][9]);
-// 内部在做n×1×1×1×1×n的事情，其中n=9（8+1）,中间的1是JbBuffer[9]
+// 内部在做n×1×1×1×1×n的事情，其中n=9（8+1）,中间的1是JbBuffer[9]，H_beta_beta
 acc9SC.updateSingleWeighted(
     (float) JbBuffer_new[i][0], (float) JbBuffer_new[i][1], (float) JbBuffer_new[i][2],
     (float) JbBuffer_new[i][3],
@@ -349,4 +357,18 @@ acc9SC.updateSingleWeighted(
     (float) JbBuffer_new[i][7],
     (float) JbBuffer_new[i][8], (float) JbBuffer_new[i][9]);
 ```
+
+
+
+---
+
+## 之后的部分
+
+上述过程基本上都是函数calcResAndGS内部做的事情，其实整个trackFrame函数在做的就是一个L-M过程，这个过程可以在网上找到很多讲解，这里不赘述。
+
+这里再记录一些变量：
+
+- point->ir就是逆深度（至少笔者目前是这么觉得的）；
+- point->iR是在neighbor窗口中的平滑值，且这个值会最后在金字塔的相邻层级下进行再一次的平滑（见propagateDown和propagateUp函数）；
+- point->depth和point->newdepth都是在优化过程中迭代的量；
 
