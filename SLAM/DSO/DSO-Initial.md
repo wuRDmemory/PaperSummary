@@ -194,7 +194,7 @@ $$
    E = E_{proj}+ 1*(\underbrace{\left\| d_{p_i}-d_{IR} \right\|^2}_{H_{vv} part})
    $$
 
-注意，这里能量函数是误差$e(x)$的平方，所以在求导Jacobian的时候，要用$e=d_{p_i}-1$或者$e=d_{d_i}-d_{IR}$.
+注意，这里能量函数是误差$e(x)$的平方，所以在求导Jacobian的时候，要用$e=d_{p_i}-1$或者$e=d_{d_i}-d_{IR}$，.
 
 这部分对应的代码为，由于这部分还涉及到schur补的构建，这个下部分会介绍，：
 
@@ -250,22 +250,6 @@ for (int i = 0; i < npts; i++) {
         (float) JbBuffer_new[i][7],
         (float) JbBuffer_new[i][8], (float) JbBuffer_new[i][9]);
 }
-
-acc9SC.finish();
-
-H_out = acc9.H.topLeftCorner<8, 8>();// / acc9.num;
-b_out = acc9.H.topRightCorner<8, 1>();// / acc9.num;
-H_out_sc = acc9SC.H.topLeftCorner<8, 8>();// / acc9.num;
-b_out_sc = acc9SC.H.topRightCorner<8, 1>();// / acc9.num;
-
-H_out(0, 0) += alphaOpt * npts;
-H_out(1, 1) += alphaOpt * npts;
-H_out(2, 2) += alphaOpt * npts;
-
-Vec3f tlog = refToNew.log().head<3>().cast<float>();
-b_out[0] += tlog[0] * alphaOpt * npts;
-b_out[1] += tlog[1] * alphaOpt * npts;
-b_out[2] += tlog[2] * alphaOpt * npts;
 ```
 
 
@@ -294,9 +278,23 @@ H_{\alpha \beta} &=J_{\alpha}^T J_{\beta} \\
 H_{\beta \beta}  &=J_{\beta}^T J_{\beta} \\
 \end{aligned}
 $$
-这部分在代码中为，其中dp0-7是$\alpha$部分，$r$是误差，最终矩阵的大小为$9\times9$，前$8\times8$为$H_{\alpha \alpha}=J_{alpha}^{T} J_{alpha}$，最后一列为$b_{\alpha}=J_{\alpha}^T e$：
+而Schur补的公式如下，过程其实就跟解二元一次方程一样，这里不再赘述：
+$$
+\begin{aligned}
+(H_{\alpha \alpha}-H_{\alpha \beta}H_{\beta \beta}^{-1}H_{\beta \alpha})\delta{x_{\alpha}}&=(b_{\alpha}-H_{\alpha \beta}H_{\beta \beta}^{-1}b_{\beta}) \\
+\overline{H_{\alpha \alpha}} \delta{x_{\alpha}} &= \overline{b_{\alpha}}
+\end{aligned}
+$$
+求解完$\delta{x_{\alpha}}$之后，带入原方程之中求解$\delta{x_{\beta}}$
+
+
+
+### 代码部分
+
+这部分在代码中有两个地方，第一个地方如下，求解的是要保留的$\alpha$部分的矩阵$H_{\alpha \alpha}$，其中dp0-7是$J_{\alpha}$，$r$是误差$e$，acc9最终矩阵的大小为$9\times9$，前$8\times8$为$H_{\alpha \alpha}=J_{alpha}^{T} J_{alpha}$，最后一列为$b_{\alpha}=J_{\alpha}^T e$：
 
 ```c++
+// SSE每次处理4个数据，内部在做n×1×1×n的事情
 for (int i = 0; i + 3 < patternNum; i += 4)
     acc9.updateSSE(
     _mm_load_ps(((float *) (&dp0)) + i),
@@ -315,5 +313,40 @@ for (int i = ((patternNum >> 2) << 2); i < patternNum; i++)
     (float) dp0[i], (float) dp1[i], (float) dp2[i], (float) dp3[i],
     (float) dp4[i], (float) dp5[i], (float) dp6[i], (float) dp7[i],
     (float) r[i]);
+```
+
+另一部分如下，其中JbBuffer0~7是$J^T_{\alpha}J_{\beta}$部分，而JbBuffer[8]是$J^T_{\beta}e$部分，JbBuffer[9]是$J^T_{\beta}J_{\beta}$部分：
+
+```c++
+// immediately compute dp*dd' and dd*dd' in JbBuffer1.
+// 因为要把逆深度merge掉用于schur补计算，因此这里算的其实是W阵，merge掉深度值
+JbBuffer_new[i][0] += dp0[idx] * dd[idx];
+JbBuffer_new[i][1] += dp1[idx] * dd[idx];
+JbBuffer_new[i][2] += dp2[idx] * dd[idx];
+JbBuffer_new[i][3] += dp3[idx] * dd[idx];
+JbBuffer_new[i][4] += dp4[idx] * dd[idx];
+JbBuffer_new[i][5] += dp5[idx] * dd[idx];
+JbBuffer_new[i][6] += dp6[idx] * dd[idx];
+JbBuffer_new[i][7] += dp7[idx] * dd[idx];
+
+// Jb part
+JbBuffer_new[i][8] += r[idx] * dd[idx];
+
+// Hv part
+JbBuffer_new[i][9] += dd[idx] * dd[idx];
+```
+
+最后一部分是构建$H_{\alpha \beta}H_{\beta \beta}^{-1}H_{\beta \alpha}$和$H_{\alpha \beta}H_{\beta \beta}^{-1}b_{\beta}$，该部分均放在acc9SC中，其中前$8\times8$是$H_{\alpha \beta}H_{\beta \beta}^{-1}H_{\beta \alpha}$，最后一列$8\times1$是$H_{\alpha \beta}H_{\beta \beta}^{-1}b_{\beta}$，如下：
+
+```c++
+// 因为H_beta是对角矩阵，因此逆为个元素分之1，但是没有搞懂为啥分母多加了1
+JbBuffer_new[i][9] = 1 / (1 + JbBuffer_new[i][9]);
+// 内部在做n×1×1×1×1×n的事情，其中n=9（8+1）,中间的1是JbBuffer[9]
+acc9SC.updateSingleWeighted(
+    (float) JbBuffer_new[i][0], (float) JbBuffer_new[i][1], (float) JbBuffer_new[i][2],
+    (float) JbBuffer_new[i][3],
+    (float) JbBuffer_new[i][4], (float) JbBuffer_new[i][5], (float) JbBuffer_new[i][6],
+    (float) JbBuffer_new[i][7],
+    (float) JbBuffer_new[i][8], (float) JbBuffer_new[i][9]);
 ```
 
