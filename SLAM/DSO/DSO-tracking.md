@@ -32,5 +32,55 @@
 
 ### 准备运动初值
 
-文字在这个部分显得些许苍白，这里配上一张图会比较清晰：
+这个部分用文字说明比较苍白，这里配上一张图会比较清晰：
 
+![](/home/ubuntu/Projects/PaperSummary/SLAM/DSO/pictures/DSO4.png)
+
+如图所示，图中的变量使用的都是程序中的变量名称，最终需要的运动初值为红线所示的LastF_2_fh，然后作者使用的参考运动值为sprelast_2_slast，假设为slast_2_fh，因此五种模型如下：
+
+1. 匀速模型：$T_{lastF}^{fh} = T_{slast}^{fh}*T_{lastF}^{slast}$；
+2. 倍速模型：$T_{lastF}^{fh} = T_{slast}^{fh}*T_{lastF}^{fh}$，相当于说匀速的从slast帧运动到当前帧，之后以当前帧为起点再匀速运动一次；
+3. 半速模型：$T_{lastF}^{fh} = 0.5×T_{slast}^{fh}*T_{lastF}^{slast}$；
+4. 零速模型：$T_{lastF}^{fh} = T_{lastF}^{slast}$；
+5. 不动模型：$T_{lastF}^{fh} = T_I$；
+
+随后就是26×3种旋转模型，这里不在赘述，代码如下：
+
+```c++
+shared_ptr<FrameHessian> lastF = coarseTracker->lastRef; // last key frame
+shared_ptr<Frame> slast = allFrameHistory[allFrameHistory.size() - 2];
+shared_ptr<Frame> sprelast = allFrameHistory[allFrameHistory.size() - 3];
+
+SE3 slast_2_sprelast;
+SE3 lastF_2_slast;
+{    // lock on global pose consistency!
+    unique_lock<mutex> crlock(shellPoseMutex);
+    slast_2_sprelast = sprelast->getPose() * slast->getPose().inverse();
+    lastF_2_slast = slast->getPose() * lastF->frame->getPose().inverse();
+    aff_last_2_l = slast->aff_g2l;
+}
+SE3 fh_2_slast = slast_2_sprelast;// assumed to be the same as fh_2_slast.
+
+// get last delta-movement.
+lastF_2_fh_tries.push_back(fh_2_slast.inverse() * lastF_2_slast);    // assume constant motion.
+lastF_2_fh_tries.push_back(fh_2_slast.inverse() * fh_2_slast.inverse() * lastF_2_slast);    // assume double motion (frame skipped)
+lastF_2_fh_tries.push_back(SE3::exp(fh_2_slast.log() * 0.5).inverse() * lastF_2_slast); // assume half motion.
+lastF_2_fh_tries.push_back(lastF_2_slast); // assume zero motion.
+lastF_2_fh_tries.push_back(SE3()); // assume zero motion FROM KF.
+
+
+// just try a TON of different initializations (all rotations). In the end,
+// if they don't work they will only be tried on the coarsest level, which is super fast anyway.
+// also, if tracking rails here we loose, so we really, really want to avoid that.
+for (float rotDelta = 0.02;rotDelta < 0.05; rotDelta += 0.01) {    // TODO changed this into +=0.01 where DSO writes ++
+    lastF_2_fh_tries.push_back(fh_2_slast.inverse() * lastF_2_slast *
+                               SE3(Sophus::Quaterniond(1, rotDelta, 0, 0),
+                                   Vec3(0, 0, 0)));            // assume constant motion.
+    ...
+    lastF_2_fh_tries.push_back(fh_2_slast.inverse() * lastF_2_slast *
+                                   SE3(Sophus::Quaterniond(1, rotDelta, rotDelta, rotDelta),
+                                       Vec3(0, 0, 0)));    // assume constant motion.
+}
+```
+
+这里说明一点的是，虽然注释上写说旋转模型仅仅在金字塔最顶层进行优化，但是在代码上个人并没有发现。
