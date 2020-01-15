@@ -84,3 +84,28 @@ for (float rotDelta = 0.02;rotDelta < 0.05; rotDelta += 0.01) {    // TODO chang
 ```
 
 这里说明一点的是，虽然注释上写说旋转模型仅仅在金字塔最顶层进行优化，但是在代码上个人并没有发现。
+
+
+
+### 位姿优化
+
+位姿优化从金字塔的最顶层由粗到细的进行优化，大致步骤如下：
+
+1. 从上到下遍历每一层；
+
+2. 对于每一层使用L-M优化的方式，不过对于初始化的残差和增量方程，作者采取了及其容忍的态度，**这大概率是因为在计算光度误差的时候，作者仅仅使用一个点而不是像素块的方式**，具体方法是每次都会判断超出阈值的点所占的比例，如果比例过大（60%），则增加阈值（2倍）并重新来过，直到满足条件或者阈值增大到一定程度，代码如下：
+
+   ```c++
+   Vec6 resOld = calcRes(lvl, refToNew_current, aff_g2l_current, setting_coarseCutoffTH * levelCutoffRepeat);
+   // 如果误差大的点的比例大于60%， 那么增大阈值再计算N次
+   while (resOld[5] > 0.6 && levelCutoffRepeat < 50) {
+       // more than 60% is over than threshold, then increate the cut off threshold
+       levelCutoffRepeat *= 2;
+       resOld = calcRes(lvl, refToNew_current, aff_g2l_current, setting_coarseCutoffTH * levelCutoffRepeat);
+   }
+   
+   // Compute H and b
+   calcGSSSE(lvl, H, b, refToNew_current, aff_g2l_current);
+   ```
+
+3. 进行L-M算法，
