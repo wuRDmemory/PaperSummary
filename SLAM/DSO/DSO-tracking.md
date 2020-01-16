@@ -8,6 +8,8 @@
 
 
 
+---
+
 ## 特点
 
 虽然都是最小化光度误差，这里先列出DSO做的很不同的地方：
@@ -15,22 +17,26 @@
 1. 放弃使用了像素块的方法，这个个人深有感触，一般而言虽然像素块的大小不大，但是耐不住点多啊，多数情况下如果用像素块的话这个地方就变成了十分花费时间；
 2. 当某一层的初始位姿不好的时候，DSO并不放弃"治疗"，反而会给足了机会去优化，但是如果优化出来的结果与阈值差距太大，那么就直接放弃了；
 3. 作者假设了5种运动模型：匀速、倍速、半速、零速以及没有运动；
-4. 与此同时，作者假定了有26×3种旋转情况（四元数的26种旋转情况，3个比较小的角度），作者认为是在丢失的情况下，这样的方法会十分有用，如果没有丢失应该前五种假设就够了；
+4. 与此同时，作者假定了有26×N种旋转情况（四元数的26种旋转情况，N个比较小的角度），作者认为是在丢失的情况下，这样的方法会十分有用，如果没有丢失应该前五种假设就够了；
 
 
+
+---
 
 ## 深入探讨
 
-整个跟踪函数仅有一个，即代码中的trackNewCoarse函数，该函数主要做了两件事：
+整个跟踪函数仅有一个，即代码中的trackNewCoarse函数，该函数主要做了四件事：
 
 1. 准备相应的运动初值，详细来说就是五种运动假设和N种旋转假设；
-2. 对每一个初值进行L-M迭代，求得最佳的位姿；
+2. 对每一个运动假设进行L-M迭代，求得最佳的位姿以及对应的能量；
+3. 更新最优结果；
+4. 更新其它变量；
 
-下面分两部分来说明：
+下面逐步进行说明：
 
 
 
-### 准备运动初值
+### A. 准备运动初值
 
 这个部分用文字说明比较苍白，这里配上一张图会比较清晰：
 
@@ -87,9 +93,9 @@ for (float rotDelta = 0.02;rotDelta < 0.05; rotDelta += 0.01) {    // TODO chang
 
 
 
-### 位姿优化
+### B. 位姿优化
 
-位姿优化从金字塔的最顶层由粗到细的进行优化，大致步骤如下：
+对于每一个运动假设，算法从金字塔的最顶层由粗到细的进行位姿优化，大致步骤如下（主要是coarseTracker->trackNewestCoarse函数部分）：
 
 1. 从上到下遍历每一层；
 
@@ -106,6 +112,7 @@ for (float rotDelta = 0.02;rotDelta < 0.05; rotDelta += 0.01) {    // TODO chang
    
    // Compute H and b
    // 内部也是用SSE实现的，公式可以参考上一篇文章
+   // 其中用到的参考帧的东西都在参考帧添加的时候准备好了
    calcGSSSE(lvl, H, b, refToNew_current, aff_g2l_current);
    ```
 
@@ -170,7 +177,6 @@ for (float rotDelta = 0.02;rotDelta < 0.05; rotDelta += 0.01) {    // TODO chang
        bool accept = (resNew[0] / resNew[1]) < (resOld[0] / resOld[1]);
    
        if (accept) {
-   
            // decrease lambda
            calcGSSSE(lvl, H, b, refToNew_new, aff_g2l_new);
            resOld = resNew;
@@ -189,5 +195,77 @@ for (float rotDelta = 0.02;rotDelta < 0.05; rotDelta += 0.01) {    // TODO chang
        }
    } // end of L-M iteration
    ```
+   
+4. 优化完成之后查看一下该层最终的标准差，如果标准差大于阈值的1.5倍时，认为该次优化失败了，直接退出（这里阈值是动态调节的，如果最优的运动假设得到的误差为E，那么该次优化的误差不能超过NE，作者使用N=1.5，如果超过了就没必要再优化了，直接用最优的结果就好了，这样倒是很可以进行算法加速啊！）；除此之外，如果该层的初始误差状态并不佳，但是最终的误差确实在NE范围中，那么说明这个初值还有希望，就再优化一遍，不过这个机会是整个运动假设优化过程中唯一的一次机会，用掉了就没有了。代码如下：
 
-4. 看一下该层最终的标准差，如果标准差大于阈值的1.5倍时，认为该次优化失败了，直接退出，这里阈值是动态调节的，作者认为，如果上一层的误差为x，那么该层的误差决不能超过上层的一个倍数（作者使用1.5倍），毕竟粗优化提供了初值，细优化应该能达到更好的状态才对；
+   ```c++
+   // set last residual for that level, as well as flow indicators.
+   // 看一下标准差，如果标准差大于1.5倍的阈值，那么认为优化失败
+   lastResiduals[lvl] = sqrtf((float) (resOld[0] / resOld[1]));
+   lastFlowIndicators = resOld.segment<3>(2);
+   if (lastResiduals[lvl] > 1.5 * minResForAbort[lvl])
+       return false;
+   
+   // repeat this level level
+   // 当初始位姿不好的时候，
+   if (levelCutoffRepeat > 1 && !haveRepeated) {
+       lvl++;
+       haveRepeated = true;
+   }
+   ```
+
+
+
+### C. 更新最优变量
+
+经历上面的优化过程后，如果没有什么问题，此时我们就获得了一个能量（也就是整体的误差水平），如果本次优化在金字塔第0层的误差小于上次的第0层误差（**第0层着实很重要**），那么算法认为这是一个更好的结果，就更新（B4）步骤中的阈值为当前的各层误差；进一步，如果本次的金字塔第0层误差水平在**上一帧**的误差水平的1.5倍之内，那么就认为这个就是最优的，直接退出计算，代码如下：
+
+```c++
+if (trackingIsGood && 
+    std::isfinite((float) coarseTracker->lastResiduals[0]) &&
+    !(coarseTracker->lastResiduals[0] >= achievedRes[0])) {
+    flowVecs = coarseTracker->lastFlowIndicators;
+    aff_g2l = aff_g2l_this;
+    lastF_2_fh = lastF_2_fh_this;
+    haveOneGood = true;
+}
+
+// take over achieved res (always).
+if (haveOneGood) {
+    for (int i = 0; i < 5; i++) {
+        if (!std::isfinite((float) achievedRes[i]) ||
+            achievedRes[i] > coarseTracker->lastResiduals[i])    // take over if achievedRes is either bigger or NAN.
+            achievedRes[i] = coarseTracker->lastResiduals[i];
+    }
+}
+
+// 如果当次的优化结果是上一帧结果的N倍之内，认为这就是最优的
+if (haveOneGood && achievedRes[0] < lastCoarseRMSE[0] * setting_reTrackThreshold)
+    break;
+```
+
+
+
+### D. 更新其他变量
+
+最后，如果上面三个步骤都能如期运行，那么我们就已经跟踪上了前一个关键帧；但是如果上面的步骤并没有给出一个很好的结果，那么算法将匀速假设作为最好的假设并设置为当前的位姿。最后就是讲当前的误差水平更新为保存变量供之后的过程使用。代码如下：
+
+```c++
+if (!haveOneGood) {
+    LOG(WARNING) << "BIG ERROR! tracking failed entirely. Take predicted pose and hope we may somehow recover." << endl;
+    flowVecs = Vec3(0, 0, 0);
+    aff_g2l = aff_last_2_l;
+    lastF_2_fh = lastF_2_fh_tries[0];
+}
+
+lastCoarseRMSE = achievedRes;
+```
+
+
+
+----
+
+## 总结
+
+整体来看，DSO在进行位姿跟踪的时候确实花了不少心思，一是准备了很多运动假设，二是给每一个假设很足的机会，能初始化就初始化，实在不行才放弃。不过这么做也必然会花费不少时间。
+
