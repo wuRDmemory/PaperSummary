@@ -105,7 +105,89 @@ for (float rotDelta = 0.02;rotDelta < 0.05; rotDelta += 0.01) {    // TODO chang
    }
    
    // Compute H and b
+   // 内部也是用SSE实现的，公式可以参考上一篇文章
    calcGSSSE(lvl, H, b, refToNew_current, aff_g2l_current);
    ```
 
-3. 进行L-M算法，
+3. 进行L-M算法，这里都比较正常，代码如下：代码中不太明白的是作者在求解出增量了之后，为什么又与权重做了积？
+
+   ```C++
+   for (int iteration = 0; iteration < maxIterations[lvl]; iteration++) {
+       Mat88 Hl = H;
+       for (int i = 0; i < 8; i++) Hl(i, i) *= (1 + lambda);
+       Vec8 inc = Hl.ldlt().solve(-b);
+   
+       // depends on the mode, if a,b is fixed, don't estimate them
+       if (setting_affineOptModeA < 0 && setting_affineOptModeB < 0)    // fix a, b
+       {
+           inc.head<6>() = Hl.topLeftCorner<6, 6>().ldlt().solve(-b.head<6>());
+           inc.tail<2>().setZero();
+       }
+       if (!(setting_affineOptModeA < 0) && setting_affineOptModeB < 0)    // fix b
+       {
+           inc.head<7>() = Hl.topLeftCorner<7, 7>().ldlt().solve(-b.head<7>());
+           inc.tail<1>().setZero();
+       }
+       if (setting_affineOptModeA < 0 && !(setting_affineOptModeB < 0))    // fix a
+       {
+           Mat88 HlStitch = Hl;
+           Vec8 bStitch = b;
+           HlStitch.col(6) = HlStitch.col(7);
+           HlStitch.row(6) = HlStitch.row(7);
+           bStitch[6] = bStitch[7];
+           Vec7 incStitch = HlStitch.topLeftCorner<7, 7>().ldlt().solve(-bStitch.head<7>());
+           inc.setZero();
+           inc.head<6>() = incStitch.head<6>();
+           inc[6] = 0;
+           inc[7] = incStitch[6];
+       }
+   
+       float extrapFac = 1;
+       if (lambda < lambdaExtrapolationLimit)
+           extrapFac = sqrtf(sqrt(lambdaExtrapolationLimit / lambda));
+       inc *= extrapFac;
+   
+       // 这里为什么要再乘一个scale
+       Vec8 incScaled = inc;
+       incScaled.segment<3>(0) *= SCALE_XI_ROT;
+       incScaled.segment<3>(3) *= SCALE_XI_TRANS;
+       incScaled.segment<1>(6) *= SCALE_A;
+       incScaled.segment<1>(7) *= SCALE_B;
+   
+       if (!std::isfinite(incScaled.sum())) incScaled.setZero();
+   
+       // left multiply the pose and add to a,b
+       SE3 refToNew_new = SE3::exp((Vec6) (incScaled.head<6>())) * refToNew_current;
+       AffLight aff_g2l_new = aff_g2l_current;
+       aff_g2l_new.a += incScaled[6];
+       aff_g2l_new.b += incScaled[7];
+   
+       // calculate new residual after this update step
+       Vec6 resNew = calcRes(lvl, refToNew_new, aff_g2l_new, setting_coarseCutoffTH * levelCutoffRepeat);
+   
+       // decide whether to accept this step
+       // res[0]/res[1] is the average energy
+       bool accept = (resNew[0] / resNew[1]) < (resOld[0] / resOld[1]);
+   
+       if (accept) {
+   
+           // decrease lambda
+           calcGSSSE(lvl, H, b, refToNew_new, aff_g2l_new);
+           resOld = resNew;
+           aff_g2l_current = aff_g2l_new;
+           refToNew_current = refToNew_new;
+           lambda *= 0.5;
+       } else {
+           // increase lambda in LM
+           lambda *= 4;
+           if (lambda < lambdaExtrapolationLimit) lambda = lambdaExtrapolationLimit;
+       }
+   
+       // terminate if increment is small
+       if (!(inc.norm() > 1e-3)) {
+           break;
+       }
+   } // end of L-M iteration
+   ```
+
+4. 看一下该层最终的标准差，如果标准差大于阈值的1.5倍时，认为该次优化失败了，直接退出，这里阈值是动态调节的，作者认为，如果上一层的误差为x，那么该层的误差决不能超过上层的一个倍数（作者使用1.5倍），毕竟粗优化提供了初值，细优化应该能达到更好的状态才对；
