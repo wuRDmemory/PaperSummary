@@ -8,8 +8,10 @@
 2. [https://www.zybuluo.com/lancelot-vim/note/412293](https://www.zybuluo.com/lancelot-vim/note/412293) 讲解LSD-SLAM中深度滤波的博客
 3. https://blog.csdn.net/kokerf/article/details/78006703 也是一篇讲解LSD-SLAM中深度滤波的博客
 4. REMODE: Probabilistic, Monocular Dense Reconstruction in Real Time. SVO采用的深度滤波的论文
-5. 视觉SLAM十四讲. 第十三章对逆深度基于高斯分布的融合进行了讲解
-6. [https://blog.csdn.net/qq_18343569/article/details/49003993](https://blog.csdn.net/qq_18343569/article/details/49003993) 讲解一些像素匹配算法
+5. Supplementary matterial Parametric approximation to posterior. SVO的补充材料，推到了高斯--均匀模型到高斯--Beta分布的推导过程
+6. https://www.cnblogs.com/ilekoaiq/p/8228324.html. 比较详细的推导了高斯--均匀模型
+7. 视觉SLAM十四讲. 第十三章对逆深度基于高斯分布的融合进行了讲解
+8. [https://blog.csdn.net/qq_18343569/article/details/49003993](https://blog.csdn.net/qq_18343569/article/details/49003993) 讲解一些像素匹配算法
 
 
 
@@ -333,4 +335,95 @@ $$
 ---
 
 ## 改进深度模型——均匀-高斯逆深度模型
+
+> 这部分主要参考REMODE: Probabilistic, Monocular Dense Reconstruction in Real Time.
+
+至此我们已经可以得到较好的方差了，那接下来一个问题：如果得到的匹配是错的怎么办？
+
+其实滤波本质上就是想通过滤波算法滤出野值，可是按照上述的方法来做的话，其实仅仅是减缓了野值的影响，但是还是添加进来的野值，虽然权重（方差）可能比较小。
+
+所以作者把逆深度模型建模为均匀-高斯模型，先祭出建立的模型如下：
+$$
+p\left(x_{n} | Z, \pi\right)=\pi N\left(x_{n} | Z, \tau_{n}^{2}\right)+(1-\pi) U\left(x_{n}\right|d_{min}, d_{max})  \tag{20}
+$$
+其中：
+
+- $x_n$表示根据极线搜索出来的逆深度，是滤波中的测量；
+- $Z$表示逆深度的估计值，是滤波中的一个状态变量；
+- $\pi$表示当前估计是可用的估计（内点）的概率，是滤波中的一个状态变量；
+
+该模型是说测量逆深度的概率密度是均匀概率密度和高斯概率密度的加权，可以看出当我们知道当前估计是内点的时候（$\pi=1$），则认为测量满足高斯分布，就像最上面的简单的深度滤波一样；如果当次测量是不可用的时候（$\pi=0$），则测量满足均匀概率分布，范围是$[d_{min}, d_{max}]$。
+
+所以根据上述的似然，由贝叶斯公式可以得到后验概率为：
+$$
+p(Z,\pi|x_1, x_2,...,x_n) \propto p(x_1, x_2,...,x_n|Z,\pi)p(Z,\pi) \propto \prod_{i=1}^np(x_i|Z,\pi) \tag{21}
+$$
+公式里面因为$p(Z,\pi)=p(Z)p(\pi)$是先验部分，而对于这个问题而言，先验是一个均匀的分布，因此乘积为0。针对公式（21），如果我们期望通过每个测量得到最终的估计值——真实的逆深度以及该点是内点的概率，那么我们可以通过最大化似然来得到，一个方法可以是穷举法，简单说就是穷举所有的$Z$和$\pi$，使得最终的似然极大，这个太逆天了，这里根本无法做朋友，就不讨论了。
+
+
+
+#### 引入隐变量
+
+上面说道穷举法实在太逆天，一般根本无法使用，那么作者在公式（20）的基础上想：如果引入一个变量表示当次的测量是好是坏呢？于是作者引入了一个隐变量$y_n=0/1$，如果$y_n=1$，则表示该次测量是好的；$y_n=0$表示该次测量是不好的；这样有什么好处呢？看下图：
+
+<img src="pictures/depthfilter12.png">
+
+该图是统计了150副图像的测量深度的直方图（我比较迷为啥还有负值），可以看到两个事情：
+
+1. 测量深度的模型确实更加满足均匀--高斯分布；
+2. 如果给出了某次测量是好是坏，那么确实可以帮助算法更好的计算，比如在峰值附近告诉算法这是好的测量，那么算法可以直接更新高斯部分；如果是坏的分布，那么就不更新高斯部分；
+
+所以引入了隐变量之后的模型变做：
+$$
+\begin{cases}
+p\left(x_{n} | Z, \pi, y_{n}\right)=N\left(x_{n} | Z, \tau_{n}^{2}\right)^{y_{n}} U\left(x_{n}\right)^{1-y_{n}} \\
+p\left(y_{n} | \pi\right)=\pi^{y_{n}}(1-\pi)^{1-y_{n}}
+\end{cases} \tag{22}
+$$
+其中所有的变量上面都介绍过了，不过对于第二个公式笔者并没有特别的理解，不过这个公式是正确的，推导如下：
+$$
+\begin{aligned}
+p(x_n,y_n|Z,\pi) &= \frac{p(x_n,y_n,Z,\pi)}{p(Z,\pi)} \\
+&= \frac{p(x_n|y_n,Z,\pi)p(y_n,\pi)p(Z)}{p(Z)p(\pi)} \\
+&= p(x_n|y_n,Z,\pi)p(y_n|\pi) \\
+
+p(x_n|Z,\pi) &= \int_{y_n}p(x_n,y_n|Z,\pi)d{y_n} \\
+&= p(x_n,y_n=1|Z,\pi)+p(x_n,y_n=0|Z,\pi)  
+\end{aligned}  \tag{23}
+$$
+读者可以把公式（22）带入公式（23）中就可以得到公式（20），那么目前得到了添加进来隐变量之后的模型，此时求解联合概率分布：
+$$
+p(\mathcal{X} \mathcal{Y}, Z, \pi)=\left[\prod_{n=1}^{N} p\left(x_{n} | Z, \pi, y_{n}\right) p\left(y_{n} | \pi\right)\right] p(Z) p(\pi) \tag{24}
+$$
+其中：
+
+- $\mathcal{X}$表示所有观测量组成的向量；
+- $\mathcal{Y}$表示所有隐变量组成的向量；
+- $\mathcal{X}\mathcal{Y}$表示完全数据，分开写的话表示不完全数据；
+
+到这里因为涉及到了隐变量，这里作者就用KL散度求了近似的分布，然后求解最近的分布来代替求解估计的参数，有点类似于EM中的E步，但是公式上笔者没有对上，总之近似的公式如下：
+$$
+\begin{aligned}
+\ln q_{Z, \pi}(Z, \pi)&=E_{\mathcal{Y}}[\ln p(\mathcal{X}, \mathcal{Y}, Z, \pi)]+\text { const.} 
+\end{aligned} \tag{25}
+$$
+其中q分布就是近似的分布。
+
+可以看到我们刚好有内部的联合分布，因此带入之后得到：
+$$
+\begin{aligned}
+\ln q_{Z, \pi}(Z, \pi)=& \sum_{n=1}^{N} E_{\mathcal{Y}}\left[y_{n}\right]\left(\ln N\left(x_{n} | Z, \tau_{n}^{2}\right)+\ln \pi\right) \\
+&+\sum_{n=1}^{N}\left(1-E_{\mathcal{Y}}\left[y_{n}\right]\right)\left(\ln U\left(x_{n}\right)+\ln (1-\pi)\right) \\
+&+\ln p(Z)+\ln p(\pi)+\text { const.}
+\end{aligned} \tag{26}
+$$
+两边同时把$\ln$去掉，得：
+$$
+q_{Z, \pi}(Z, \pi)=\left[\prod_{n=1}^{N} N\left(x_{n} | Z, \tau_{n}^{2}\right)^{r_{n}}\right] \pi^{S}(1-\pi)^{N-S} p(Z) p(\pi) \\
+r_{n}=E_{\mathcal{Y}}\left[y_{n}\right] \\
+\text{ }  S=\sum_{n=1}^{N} r_{n}  \tag{27}
+$$
+ 
+
+
 
