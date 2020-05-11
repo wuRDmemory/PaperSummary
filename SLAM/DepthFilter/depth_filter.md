@@ -401,7 +401,7 @@ $$
 - $\mathcal{Y}$表示所有隐变量组成的向量；
 - $\mathcal{X}\mathcal{Y}$表示完全数据，分开写的话表示不完全数据；
 
-到这里因为涉及到了隐变量，这里作者就用KL散度求了近似的分布，然后求解最近的分布来代替求解估计的参数，有点类似于EM中的E步，但是公式上笔者没有对上，总之近似的公式如下：
+到这里因为涉及到了隐变量，这里作者就用KL散度求了近似的分布，然后求解最近的分布来代替求解估计的参数，有点类似于EM中的E步，但是公式上笔者没有对上，后来看参考【6】中大佬自己硬推了一遍，内心无比佩服，总之近似的公式如下：
 $$
 \begin{aligned}
 \ln q_{Z, \pi}(Z, \pi)&=E_{\mathcal{Y}}[\ln p(\mathcal{X}, \mathcal{Y}, Z, \pi)]+\text { const.} 
@@ -412,18 +412,73 @@ $$
 可以看到我们刚好有内部的联合分布，因此带入之后得到：
 $$
 \begin{aligned}
-\ln q_{Z, \pi}(Z, \pi)=& \sum_{n=1}^{N} E_{\mathcal{Y}}\left[y_{n}\right]\left(\ln N\left(x_{n} | Z, \tau_{n}^{2}\right)+\ln \pi\right) \\
+\ln p(Z,\pi|\mathcal{X}) = \ln q_{Z, \pi}(Z, \pi)=& \sum_{n=1}^{N} E_{\mathcal{Y}}\left[y_{n}\right]\left(\ln N\left(x_{n} | Z, \tau_{n}^{2}\right)+\ln \pi\right) \\
 &+\sum_{n=1}^{N}\left(1-E_{\mathcal{Y}}\left[y_{n}\right]\right)\left(\ln U\left(x_{n}\right)+\ln (1-\pi)\right) \\
 &+\ln p(Z)+\ln p(\pi)+\text { const.}
 \end{aligned} \tag{26}
 $$
 两边同时把$\ln$去掉，得：
 $$
-q_{Z, \pi}(Z, \pi)=\left[\prod_{n=1}^{N} N\left(x_{n} | Z, \tau_{n}^{2}\right)^{r_{n}}\right] \pi^{S}(1-\pi)^{N-S} p(Z) p(\pi) \\
+q_{Z, \pi}(Z, \pi)=\left[\prod_{n=1}^{N} N\left(x_{n} | Z, \tau_{n}^{2}\right)^{y_{n}}\right] \pi^{S}(1-\pi)^{N-S} U^{N-S} p(Z) p(\pi) \\
 r_{n}=E_{\mathcal{Y}}\left[y_{n}\right] \\
 \text{ }  S=\sum_{n=1}^{N} r_{n}  \tag{27}
 $$
- 
 
+可以看到公式（27）有几个部分组成，分别是：
 
+- 多个高斯分布的乘积部分：
+  $$
+  \left[\prod_{n=1}^{N} N\left(x_{n} | Z, \tau_{n}^{2}\right)^{y_{n}}\right]
+  $$
 
+- 内点概率部分，这部分其实就是一个Beta分布，注意不是伯努利分布：
+  $$
+  \pi^{S}(1-\pi)^{N-S}
+  $$
+
+- 平均分布的累计：
+  $$
+  U^{N-S}
+  $$
+
+- 先验部分：
+  $$
+  p(Z) p(\pi) 
+  $$
+
+可以看到最后的后验概率等于高斯分布、Beta分布、均分分布的乘积、先验分布的乘积，除去一些常量之后（均匀分布和先验分布，这里先验分布其实也是均匀的，因为不知道$Z$和$\pi$的分布，所以只能假设是均匀分布的），可以得到最后的公式为：
+$$
+\begin{aligned}
+p(Z,\pi|\mathcal{X})\propto q_{Z,\pi}(x_1,...,x_n) &\propto \left[\prod_{n=1}^{N} N\left(x_{n} | Z, \tau_{n}^{2}\right)^{y_{n}}\right] \pi^{S}(1-\pi)^{N-S} \\
+& \propto \frac{(N+1)!}{(N-S)!(S)!}\pi^{S}(1-\pi)^{N-S} \left[\prod_{n=1}^{N} N\left(x_{n} | Z, \tau_{n}^{2}\right)^{y_{n}}\right]  \\
+&= \frac{\Gamma(N+2)}{\Gamma(N-S+1) \Gamma(S+1)} \pi^{S}(1-\pi)^{N-S} \prod_{n=1}^{N} N\left(x_{n} | Z, \tau_{n}^{2}\right)^{y_{n}}  \\
+&= Beta(\pi, S+1, N-S+1)N(Z|u, \sigma^2)
+\end{aligned}  \tag{28}
+$$
+其中最后的高斯分布$N(Z|u, \sigma^2)$是前面所有的$y_n=1$的联合分布（平均值）。
+
+按照上面的递推公式的话，可以预想到下一次测量来了之后迭代的过程：
+$$
+q_{Z,\pi}(x_1,...,x_n,x_{n+1})=Beta(\pi,S+1+y_{n+1},N-S+1+(1-y_{n+1}))N(Z|u,\sigma^2)N(x_{n+1}|d,\tau_{n+1}^2)^{y_{n+1}} \tag{29}
+$$
+这里就不多进行推导了，总之上式还是和隐变量$y$挂钩！
+
+#### 去除隐变量
+
+可以看到，公式（29）还是与隐变量有关，这怎么能行，这个隐变量在迭代过程中可是不知道的，因此我们还是需要把这个隐变量去掉，数学化一点来说，我们需要把隐变量从公式中边缘化掉。
+$$
+\begin{aligned}
+p(Z,\pi|x_1,...x_n,x_{n+1})& \propto p(x_{n+1}|Z,\pi) \prod_{n=1}^{N}p(x_n|Z,\pi) \\
+&=\left[\sum_{y_{n+1}}p(x_{x+1},y_n|Z,\pi)\right]\prod_{n=1}^{N}p(x_n|Z,\pi) \\
+&=\left[\sum_{y_{n+1}}p(x_{x+1}|y_{n+1},Z,\pi)p(y_{n+1}|\pi)\right]\prod_{n=1}^{N}p(x_n|Z,\pi) \\
+\end{aligned} \tag{30}
+$$
+嗯，看到公式（30）的前半部分，我们可以迅速想到公式（23）了，所以接着往下继续化简：
+$$
+\begin{aligned}
+p(Z,\pi|x_1,...x_n,x_{n+1})& \propto p(x_{n+1}|Z,\pi) \prod_{n=1}^{N}p(x_n|Z,\pi) \\
+&=(\pi N\left(x_{n+1} | Z, \tau_{n}^{2}\right)+(1-\pi) U\left(x_{n+1}\right))Beta(\pi,a_n,b_n)N(Z|u,\sigma^2) \\
+&= \underbrace{\pi N\left(x_{n+1} | Z, \tau_{n}^{2}\right)Beta(\pi,a_n,b_n)N(Z|u,\sigma^2)}_{y_{n+1}=1} \\&+ \underbrace{(1-\pi) U\left(x_{n+1}\right)Beta(\pi,a_n,b_n)N(Z|u,\sigma^2)}_{y_{n+1}=0}  \\
+&=N\left(x_{n+1} | Z, \tau_{n}^{2}\right)Beta(\pi,a_n+1,b_n)N(Z|u,\sigma^2) \\&+ U\left(x_{n+1}\right)Beta(\pi,a_n,b_n+1)N(Z|u,\sigma^2) \\
+\end{aligned}
+$$
