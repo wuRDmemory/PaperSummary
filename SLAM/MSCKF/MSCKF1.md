@@ -100,6 +100,8 @@ $$
 
 &nbsp;
 
+
+
 #### 误差状态的微分方程
 
 这部分请读者参考参考[2](https://arxiv.org/abs/1711.02508)第五章的内容，这里直接给出结论，如下：
@@ -132,20 +134,34 @@ $$
 
 &nbsp;
 
-#### 状态传递矩阵的推导
+#### 误差状态传递过程的推导
 
-ESKF花了很大的功夫在推导**误差状态**的传递方程，但是实际上对于EKF-Base的方法而言，最重要的还是**状态**的传递方程。李明扬大佬在MSCKF2.0的论文中为了保证状态传递矩阵的特性，对**状态**的传递方程进行了**理论上的推导（相对于数值推导）**，这个MSCKF2.0的理论推导放在后面去讲，本文还是按照MSCKF1.0的推导进行。
+根据MSCKF2.0中的表述，在MSCK1.0中使用的是数值推导而非理论推导，这里先按照1.0中的思路来，之后总结2.0的时候再按照2.0的方法进行推导。
 
-这里
-
-根据误差状态的传递公式（7），稍作一下变换就可以得到（注意状态传递的时候就不需要白噪声项了）：
+公式（7）表示了误差状态的微分关系，根据线性系统的离散化知识，可以得到误差状态的递推方程为：
+$$
+\boldsymbol{\tilde{X}}\left(t_{k+1}\right)=\boldsymbol{\Phi}\left(t_{k+1}, t_{k}\right) \boldsymbol{\tilde{X}}\left(t_{k}\right)+\int_{t_{k}}^{t_{k+1}} \boldsymbol{\Phi}\left(t_{k+1}, \tau\right) \boldsymbol{G}(\tau) \boldsymbol{n}(\tau) \mathrm{d} \tau \tag{8}
+$$
+其中状态传递矩阵$\dot\Phi(t_{k+1}, t_k)=F(t)\Phi(t_{k+1})$，可以明显看到，该状态转移矩阵的闭式解是指数函数，形式为：
+$$
+\boldsymbol{\Phi}\left(t_{k+1}, t_{k}\right)=\exp \int_{t_{k}}^{t_{k+1}} \boldsymbol{F}(t) \mathrm{d} t   \tag{10}
+$$
+针对公式（8），对协方差矩阵进行推导的话可以得到：
 $$
 \begin{aligned}
-\dot{\tilde{\mathbf{X}}}_{\mathrm{t}}&=\dot{(\mathbf{X}_{t}-\widehat{\mathbf{X}}_{t})}=\dot{(\Phi(t, t0) \mathbf{X}_{t0}-\widehat{\Phi(t, t0)}\widehat{\mathbf{X}}_{t0})}\\
-&\approx \dot{\Phi(t, t0)}(\mathbf{X}_{t0}-\widehat{\mathbf{X}_{t0}}) \\
-&=\mathbf{F} \tilde{\mathbf{X}}_{\mathrm{t}} \\
-&\approx \mathbf{F}\Phi(t, t0)(\mathbf{X}_{t0}-\widehat{\mathbf{X}_{t0}}) 
-\end{aligned}  \tag{8}
+E\left[\boldsymbol{W}_{k} \boldsymbol{W}_{j}^{\mathrm{T}}\right]=& E\left[\int_{t_{k}}^{t_{k+1}} \boldsymbol{\Phi}\left(t_{k+1}, t\right) \boldsymbol{G}(t) \boldsymbol{w}(t) \mathrm{d} t \cdot \int_{t_{j}}^{t_{j+1}} \boldsymbol{w}^{\mathrm{T}}(\tau) \boldsymbol{G}^{\mathrm{T}}(\tau) \boldsymbol{\Phi}^{\mathrm{T}}\left(t_{k+1}, \tau\right) \mathrm{d} \tau\right] \\
+&= \int_{t_{k}}^{t_{k+1}} \boldsymbol{\Phi}\left(t_{k+1}, t\right) \boldsymbol{G}(t)\left[\int_{t_{j}}^{t_{j+1}} E\left[\boldsymbol{w}(t) \boldsymbol{w}^{\mathrm{T}}(\tau)\right] \cdot \boldsymbol{G}^{\mathrm{T}}(\tau) \boldsymbol{\Phi}^{\mathrm{T}}\left(t_{k+1}, \tau\right) \mathrm{d} \tau\right] \mathrm{d} t\\
+&= \int_{t_{k}}^{t_{k+1}} \boldsymbol{\Phi}\left(t_{k+1}, t\right) \boldsymbol{G}(t)\left[\int_{t_{j}}^{t_{j+1}} \boldsymbol{q} \delta(t-\tau) \boldsymbol{G}^{\mathrm{T}}(\tau) \boldsymbol{\Phi}\left(t_{k+1}, \tau\right) \mathrm{d} \tau\right] \mathrm{d} t
+\end{aligned}  \tag{11}
 $$
+于是看到，当$t！=\tau$的时候，因为狄更斯函数的关系导致积分值为0；而当$t==\tau$的时候，整个积分有值，为：
+$$
+\left.E\left[\boldsymbol{W}_{k} \boldsymbol{W}_{j}^{\mathrm{T}}\right]\right|_{j=k}=\int_{t_{k}}^{t_{k+1}} \boldsymbol{\Phi}\left(t_{k+1}, t\right) \boldsymbol{G}(t) \boldsymbol{q} \boldsymbol{G}^{\mathrm{T}}(t) \boldsymbol{\Phi}^{\mathrm{T}}\left(t_{k+1}, t\right) \mathrm{d} t \tag{12}
+$$
+对于离散情况而言，如果采样周期足够短，我们可以简单的假设在$t \in [t_k, t_{k+1}]$这段时间内，转移矩阵$\Phi$和驱动矩阵$G$均不变化，于是整个**误差状态**传递过程就比较明了了：
 
-于是可以得到转移
+1. 通过公式（7）获得误差状态**微分方程**的传递矩阵$\mathbf{F(t)}$；
+2. 通过公式（10）获得误差状态的转移矩阵$\mathbf{\Phi(t_{k+1}, t_k)}$，这里通常使用泰勒展开，论文中保留到了三阶；
+3. 通过公式（12）获得误差状态的协方差矩阵；
+
+整个过程完成了卡尔曼滤波的预测阶段；
