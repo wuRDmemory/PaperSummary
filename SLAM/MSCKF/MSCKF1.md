@@ -25,16 +25,19 @@
 
 <img src="pictures/MSCKF1_1.png"/>
 
-这里还有一个笔者认为比较重要的不同就是微分方程也变化了一些，区别如下：
+这里笔者把个人认为比较重要的改变记录下来：
 
-1. Hamilton表示法中，四元数的微分方程表示为$\dot{\mathbf{q}}=\frac{1}{2}\mathbf{q}\otimes\Omega(^Lw) $
-2. JPL表示法中，四元数的微分方程表示为$\dot{\mathbf{q}}=\frac{1}{2}\Omega(^Lw)\otimes \mathbf{q}$
+- 四元数的微分方程发生了变化，区别如下：
 
-其中$\Omega(^Lw)$均可以表示为一个纯四元数的右乘矩阵形式：
+  - Hamilton表示法中，四元数的微分方程表示为$\dot{\mathbf{q}}=\frac{1}{2}\mathbf{q}\otimes\Omega(^Lw) $；
+  - JPL表示法中，四元数的微分方程表示为$\dot{\mathbf{q}}=\frac{1}{2}\Omega(^Lw)\otimes \mathbf{q}$
+
+  其中$\Omega(^Lw)$均用一个纯四元数（pure quaternions）的右乘矩阵形式：
+
 $$
 \Omega(w)=\begin{bmatrix}-[w]_{\times} & w \\ -w^T & 0 \end{bmatrix}
 $$
-笔者认为改性质的主要原因就是因为JPL的旋转是左手坐标系的，与右手坐标系的旋转刚好是旋转轴一致，但是旋转方向相反。
+- 四元数的扰动展开发生了变化；
 
 &nbsp;
 
