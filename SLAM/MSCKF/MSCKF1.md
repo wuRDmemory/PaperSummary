@@ -6,10 +6,11 @@
 2. Quaternion Kinematics for Error-State KF. 关于四元数以及ESKF的论文；
 3. Robust Stereo Visual Inertial Odometry for Fast Autonomous Flight. MSCKF-VIO对应的论文；
 4. https://github.com/KumarRobotics/msckf_vio 双目MSCKF的工程；
+5. https://zhuanlan.zhihu.com/p/76341809 知乎上大佬对MSCKF的总结，本文没有过多的程序方面的讲解，都是从理论上推导的，也是个人的一些解惑过程；
 
 > PS: MSCKF的工程算是我见过最贴近论文的工程了，基本上工程中的数学部分在论文里面都给了出来，所以对于MSCKF1.0来说，论文是一定要弄懂的。本篇将参考[1]和参考[3]放在一起进行梳理，因为两者确实很相似，不过在参考[3]中作者对能观性进行了一定程度的补偿。
 
-
+&nbsp;
 
 ----
 
@@ -82,22 +83,28 @@ $$
 
 这一小节主要搞清楚MSCKF中的状态量是什么，这个也是理解MSCKF的一个重要的部分。
 
-相比于EKF-Base的方法，MSCKF更多的使用ESKF的方式，也就是对**误差变量error-state**进行估计，而不是**对表示位姿的状态变量normal-state**进行估计。回忆Graph-Base的方法，是不是觉得有异曲同工之妙呢？
+相比于EKF-Base的方法，MSCKF更多的使用ESKF的方式，也就是对**误差变量error-state**进行估计，而不是**对表示位姿的状态变量normal-state**进行估计。与Graph-base的方法求解的量是一样的。
 
-使用ESKF的好处是不言而喻的，笔者认为主要有以下几点：
+使用ESKF的好处是不言而喻的，引用参考2中的原话：
 
-1. 因为error-state本身就比较小，
-2. 对于
+- The orientation error-state is minimal (i.e., it has the same number of parameters as degrees of freedom), avoiding issues related to over-parametrization (or redundancy) and the consequent risk of singularity of the involved covariances matrices, resulting typically from enforcing constraints.
+- The error-state system is always operating close to the origin, and therefore far from possible parameter singularities, gimbal lock issues, or the like, providing a guarantee that the linearization validity holds at all times.
+- The error-state is always small, meaning that all second-order products are negligible. This makes the computation of Jacobians very easy and fast. Some Jacobians may even be constant or equal to available state magnitudes.
+- The error dynamics are slow because all the large-signal dynamics have been inte- grated in the nominal-state. This means that we can apply KF corrections (which are the only means to observe the errors) at a lower rate than the predictions.
 
+&nbsp;
 
+----
 
+## MSCKF位姿估计——状态变量的估计
 
+搞清楚了估计的变量是什么之后（一定注意是error-state），下面就可以开始构建整个滤波问题了，但是因为本质上算法还是在求解状态变量（也就是$\widehat{\mathbf{X}}$），因此这里先看一下状态变量的递推过程；
 
-该节介绍整个预测部分
+### IMU姿态的传导（Propagation）
 
-### 状态传导（Propagation）
+#### IMU的运动方程
 
-对于EKF-Base的方法而言，状态传导部分基本上依赖于IMU的运动方程，使用IMU的测量进行最新时刻的位姿的推导，并以此作为机体位姿转移到相机位姿上，在连续时域上，IMU的运动方程如下：
+对于IMU而言，姿态传导部分基本上依赖于IMU的运动方程，使用IMU的测量进行最新时刻的位姿的推导，并以此作为机体位姿转移到相机位姿上，在连续时域上，IMU的运动方程如下：
 $$
 \begin{aligned}
 \begin{cases}
@@ -127,7 +134,19 @@ $$
 
 1. $\widehat \omega(t)=\omega_{m}-\widehat b_{g}-R^{b}_{w}\omega_{G}$，表示实际过程中通过测量减去零偏的值，同时作者这里考虑了地球转动的影响；
 2. $\widehat a=a_m-\widehat b_a$，表示实际过程中通过测量减去零偏的值，作者在计算速度的微分时，也考虑了地球转动对于测量值的影响；
-3. 以上均在连续时域中进行的分析，对连续函数进行离散化时需要在位置上考虑加速度的影响，这样会更加的准确一些；
+3. 以上均在连续时域中进行的分析，对连续函数进行离散化时需要在位置上考虑加速度的影响，这样会更加的准确一些（在开源的S-MSCKF代码中是没有考虑地球自传的影响的）；
+
+&nbsp;
+
+#### IMU状态积分
+
+
+
+----
+
+### Camera姿态的传导
+
+以上均是IMU位姿的递推过程，因为这个过程中并没有观测，因此相机的位姿都保持不变；
 
 &nbsp;
 
