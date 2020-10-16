@@ -26,19 +26,29 @@
 
 <img src="pictures/MSCKF1_1.png"/>
 
-这里笔者把个人认为比较重要的改变记录下来：
+这里在本文的最后笔者会把两者的具体区别简单推导一下，这里先说比较影响推导的：
 
 - 四元数的微分方程发生了变化，区别如下：
 
   - Hamilton表示法中，四元数的微分方程表示为$\dot{\mathbf{q}}=\frac{1}{2}\mathbf{q}\otimes\Omega(^Lw) $；
   - JPL表示法中，四元数的微分方程表示为$\dot{\mathbf{q}}=\frac{1}{2}\Omega(^Lw)\otimes \mathbf{q}$
 
-  其中$\Omega(^Lw)$均用一个纯四元数（pure quaternions）的右乘矩阵形式：
+  其中$\Omega(^Lw)$均用一个纯四元数（pure quaternions）的右乘矩阵形式（这个右乘矩阵是在Hamilton四元数表示法中的）：
 
 $$
 \Omega(w)=\begin{bmatrix}-[w]_{\times} & w \\ -w^T & 0 \end{bmatrix}
 $$
-- 四元数的扰动展开发生了变化；
+- 四元数的扰动展开发生了变化：
+
+  - Hamilton表示法中，扰动四元数表示为
+    $$
+    \mathrm{R}(\mathbf{\delta{q}}) \approx \mathrm{R}(\left[1, \frac{1}{2}\mathrm{\delta{\theta}}\right])=\mathrm{I_{3x3}}+[\delta{\theta}]_{\times}
+    $$
+    
+- 在JPL表示法中，扰动四元数表示为：
+    $$
+    \mathrm{R}(\mathbf{\delta{q}}) \approx \mathrm{R}(\left[1, \frac{1}{2}\mathrm{\delta{\theta}}\right])=\mathrm{I_{3x3}}-[\delta{\theta}]_{\times}
+    $$
 
 &nbsp;
 
@@ -53,15 +63,15 @@ $$
 > 3. 若字母头上有飘号，形如$\widetilde{\mathbf{X}}$，表示该变量为error-state，也就是估计值与真值之间的差值；
 > 4. 特别的，对于四元数表示旋转而言，头上都有一个横线，形如$\overline{\mathbf{q}}$，表示该四元数是一个单位四元数；
 
-IMU状态变量一如既往的还是用5个变量表示，不过这里的顺序不太一样，如下：
+IMU状态变量一如既往的还是用5个变量表示，这里同时加上了相机与IMU的外参，如下：
 $$
-\mathrm{X}_{IMU}=\begin{bmatrix} ^{L}_{G}\overline{q}^T & b_g^{T} & ^{G}v_{I}^{T} & b_a^{T} & ^{G}p_{I}^{T} \end{bmatrix}^{T}   \tag{1}
+\mathrm{X}_{IMU}=\begin{bmatrix} ^{I}_{G}\overline{q}^T & b_g^{T} & ^{G}v_{I}^{T} & b_a^{T} & ^{G}p_{I}^{T} & ^{I}_{C}\overline{q} & ^{I}p_{C} \end{bmatrix}^{T}   \tag{1}
 $$
 IMU的error-state向量表示如下：
 $$
-\tilde{\mathrm{X}}_{IMU}=\begin{bmatrix} \delta{\theta_{I}^T} & \tilde{b}_g^T & ^{G}\tilde{v}_{I}^T & \tilde{b}_{a}^T & ^{G}\tilde{p}_{I}^{T} \end{bmatrix}^{T}   \tag{2}
+\tilde{\mathrm{X}}_{IMU}=\begin{bmatrix} ^{I}_{G}\delta{\theta^T} & \tilde{b}_g^T & ^{G}\tilde{v}_{I}^T & \tilde{b}_{a}^T & ^{G}\tilde{p}_{I}^{T} & _{C}^{I}\delta{\theta}^T & ^{I}p_{C}^T \end{bmatrix}^{T}   \tag{2}
 $$
-其中$\delta{\theta}$为旋转向量，由$\delta{\overline{q}}=\left[\frac{1}{2}\delta{\theta}^T, 1\right]^T$表示，唯一需要注意的就是一旦这样表示了，就意味着假设了旋转角度很小，因为是error-state，所以这个假设是十分成立的；
+其中$\delta{\theta}$为旋转向量，近似由$\delta{\overline{q}}=\left[\frac{1}{2}\delta{\theta}^T, 1\right]^T$表示，前面的字母仅仅指示该旋转向量是属于哪个旋转的，就意味着假设了旋转角度很小，因为是error-state，所以这个假设是十分成立的；
 
 &nbsp;
 
@@ -83,7 +93,7 @@ $$
 
 这一小节主要搞清楚MSCKF中的状态量是什么，这个也是理解MSCKF的一个重要的部分。
 
-相比于EKF-Base的方法，MSCKF更多的使用ESKF的方式，也就是对**误差变量error-state**进行估计，而不是**对表示位姿的状态变量normal-state**进行估计。与Graph-base的方法求解的量是一样的。
+相比于EKF-Base的方法，MSCKF使用的是ESKF的方式，也就是对**误差变量error-state**进行估计，而不是**对表示位姿的状态变量normal-state**进行估计。与Graph-base的方法求解的量是一样的。
 
 使用ESKF的好处是不言而喻的，引用参考2中的原话：
 
@@ -139,6 +149,12 @@ $$
 &nbsp;
 
 #### IMU状态积分
+
+由IMU的运动方程可以得到一个非线性的微分方程，如下：
+$$
+\mathrm{\dot{x}}=\mathbf{f}(t, \mathrm{x}) \tag{7}
+$$
+可以使用参考2中的Appendix A中的方法对状态量进行更新，在S-MSCKF中采用的是RK4的方法。
 
 
 
