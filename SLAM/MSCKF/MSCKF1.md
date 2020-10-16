@@ -44,7 +44,7 @@ $$
     $$
     \mathrm{R}(\mathbf{\delta{q}}) \approx \mathrm{R}(\left[1, \frac{1}{2}\mathrm{\delta{\theta}}\right])=\mathrm{I_{3x3}}+[\delta{\theta}]_{\times}
     $$
-    
+  
 - 在JPL表示法中，扰动四元数表示为：
     $$
     \mathrm{R}(\mathbf{\delta{q}}) \approx \mathrm{R}(\left[1, \frac{1}{2}\mathrm{\delta{\theta}}\right])=\mathrm{I_{3x3}}-[\delta{\theta}]_{\times}
@@ -164,34 +164,46 @@ $$
 
 以上均是IMU位姿的递推过程，因为这个过程中并没有观测，因此相机的位姿都保持不变；
 
+当有新的图像到来的时候，直接用IMU的最新位姿并经过IMU与相机的外参作为相机的最新位姿，公式如下：
+$$
+{ }_{G}^{C} \hat{\mathbf{q}}={ }_{I}^{C} \hat{\mathbf{q}} \otimes_{G}^{I} \hat{\mathbf{q}}, \quad{ }^{G} \hat{\mathbf{p}}_{C}={ }^{G} \hat{\mathbf{p}}_{C}+C\left(^{I}_{G}{\hat{q}}\right)^{\top}{ }^{I} \hat{\mathbf{p}}_{C} \tag{8}
+$$
 &nbsp;
 
+----
 
+## MSCKF位姿估计——误差状态变量的估计
+
+这部分就着重推导以误差状态变量为参数的ESKF了。
 
 #### 误差状态的微分方程
 
-这部分请读者参考参考[2](https://arxiv.org/abs/1711.02508)第五章的内容，这里直接给出结论，如下：
+这部分请读者参考参考2第五章的内容，这里直接给出结论，如下：
 $$
-\dot{\tilde{\mathbf{X}}}_{\mathrm{IMU}}=\mathbf{F} \widetilde{\mathbf{X}}_{\mathrm{IMU}}+\mathbf{G} \mathbf{n}_{\mathrm{IMU}}  \tag{7}
+\dot{\tilde{\mathbf{X}}}_{\mathrm{IMU}}=\mathbf{F} \tilde{\mathbf{X}}_{\mathrm{IMU}}+\mathbf{G} \mathbf{n}_{\mathrm{IMU}}  \tag{7}
 $$
 其中：
 
 1. $$
    \mathbf{F}=\left[\begin{array}{ccccc}
-   -\lfloor\hat{\boldsymbol{\omega}} \times\rfloor & -\mathbf{I}_{3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
-\mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
-   -\mathbf{C}_{\hat{q}}^{T}\lfloor\hat{\mathbf{a}} \times\rfloor & \mathbf{0}_{3 \times 3} & -2\left\lfloor\boldsymbol{\omega}_{G} \times\right\rfloor & \mathbf{-} \mathbf{C}_{\hat{q}}^{T} & -\left\lfloor\boldsymbol{\omega}_{G} \times\right. \\
-   \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
-   \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{I}_{3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3}
+   -\lfloor\hat{\boldsymbol{\omega}} \times\rfloor & -\mathbf{I}_{3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+\mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+   -\mathbf{C}_{\hat{q}}^{T}\lfloor\hat{\mathbf{a}} \times\rfloor & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{-} \mathbf{C}_{\hat{q}}^{T} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+   \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+   \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{I}_{3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+   \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+   \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3}
    \end{array}\right]
    $$
    
 2. $$
    \mathbf{G}=\left[\begin{array}{cccc}
-   -\mathbf{I}_{3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+   -\mathbf{I}_{3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3}  \\
    \mathbf{0}_{3 \times 3} & \mathbf{I}_{3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
    \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & -\mathbf{C}_{\hat{q}}^{T} & \mathbf{0}_{3 \times 3} \\
    \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{I}_{3} \\
+   \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+   \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
    \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3}
    \end{array}\right]
    $$
