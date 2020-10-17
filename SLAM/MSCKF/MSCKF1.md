@@ -4,7 +4,7 @@
 
 1. A Multi-State Constraint Kalman Filter for Vision-aided Inertial Navigation. MSCKF1.0的论文；
 2. Quaternion Kinematics for Error-State KF. 关于四元数以及ESKF的论文；
-3. Robust Stereo Visual Inertial Odometry for Fast Autonomous Flight. MSCKF-VIO对应的论文；
+3. Robust Stereo Visual Inertial Odometry for Fast Autonomous Flight. S-MSCKF对应的论文；
 4. https://github.com/KumarRobotics/msckf_vio 双目MSCKF的工程；
 5. https://zhuanlan.zhihu.com/p/76341809 知乎上大佬对MSCKF的总结，本文没有过多的程序方面的讲解，都是从理论上推导的，也是个人的一些解惑过程；
 
@@ -172,15 +172,15 @@ $$
 
 ----
 
-## MSCKF位姿估计——误差状态变量的估计
+## MSCKF位姿估计——预测阶段（predict）
 
 这部分就着重推导以误差状态变量为参数的ESKF了。
 
-#### 误差状态的微分方程
+### IMU误差状态的微分方程
 
 这部分请读者参考参考2第五章的内容，这里直接给出结论，如下：
 $$
-\dot{\tilde{\mathbf{X}}}_{\mathrm{IMU}}=\mathbf{F} \tilde{\mathbf{X}}_{\mathrm{IMU}}+\mathbf{G} \mathbf{n}_{\mathrm{IMU}}  \tag{7}
+\dot{\tilde{\mathbf{X}}}_{\mathrm{IMU}}=\mathbf{F} \tilde{\mathbf{X}}_{\mathrm{IMU}}+\mathbf{G} \mathbf{n}_{\mathrm{IMU}}  \tag{9}
 $$
 其中：
 
@@ -208,21 +208,25 @@ $$
    \end{array}\right]
    $$
 
-稍微不同的一点是参考2中考虑了重力，而这里并没有考虑重力，同时这里多考虑了地球的自转影响。
+稍微不同的一点是参考2中考虑了重力，而这里并没有考虑重力。
+
+> Notation
+>
+> 公式（6）中考虑了地球的自转（MSCKF1.0论文中的做法），但是公式（9）中没有考虑（S-MSCKF论文中的做法）。
 
 &nbsp;
 
-#### 误差状态传递过程的推导
+### IMU误差状态传递过程的推导
 
 根据MSCKF2.0中的表述，在MSCK1.0中使用的是数值推导而非理论推导，这里先按照1.0中的思路来，之后总结2.0的时候再按照2.0的方法进行推导。
 
-公式（7）表示了误差状态的微分关系，根据线性系统的离散化知识，可以得到误差状态的递推方程为：
+公式（9）表示了误差状态的微分关系，根据线性系统的离散化知识，可以得到误差状态的递推方程为：
 $$
-\boldsymbol{\tilde{X}}\left(t_{k+1}\right)=\boldsymbol{\Phi}\left(t_{k+1}, t_{k}\right) \boldsymbol{\tilde{X}}\left(t_{k}\right)+\int_{t_{k}}^{t_{k+1}} \boldsymbol{\Phi}\left(t_{k+1}, \tau\right) \boldsymbol{G}(\tau) \boldsymbol{n}(\tau) \mathrm{d} \tau \tag{8}
+\boldsymbol{\tilde{X}}\left(t_{k+1}\right)=\boldsymbol{\Phi}\left(t_{k+1}, t_{k}\right) \boldsymbol{\tilde{X}}\left(t_{k}\right)+\int_{t_{k}}^{t_{k+1}} \boldsymbol{\Phi}\left(t_{k+1}, \tau\right) \boldsymbol{G}(\tau) \boldsymbol{n}(\tau) \mathrm{d} \tau \tag{10}
 $$
 其中状态传递矩阵$\dot\Phi(t_{k+1}, t_k)=F(t)\Phi(t_{k+1})$，可以明显看到，该状态转移矩阵的闭式解是指数函数，形式为：
 $$
-\boldsymbol{\Phi}\left(t_{k+1}, t_{k}\right)=\exp \int_{t_{k}}^{t_{k+1}} \boldsymbol{F}(t) \mathrm{d} t   \tag{10}
+\boldsymbol{\Phi}\left(t_{k+1}, t_{k}\right)=\exp \int_{t_{k}}^{t_{k+1}} \boldsymbol{F}(t) \mathrm{d} t   \tag{11}
 $$
 针对公式（8），对协方差矩阵进行推导的话可以得到：
 $$
@@ -230,16 +234,38 @@ $$
 E\left[\boldsymbol{W}_{k} \boldsymbol{W}_{j}^{\mathrm{T}}\right]=& E\left[\int_{t_{k}}^{t_{k+1}} \boldsymbol{\Phi}\left(t_{k+1}, t\right) \boldsymbol{G}(t) \boldsymbol{w}(t) \mathrm{d} t \cdot \int_{t_{j}}^{t_{j+1}} \boldsymbol{w}^{\mathrm{T}}(\tau) \boldsymbol{G}^{\mathrm{T}}(\tau) \boldsymbol{\Phi}^{\mathrm{T}}\left(t_{k+1}, \tau\right) \mathrm{d} \tau\right] \\
 &= \int_{t_{k}}^{t_{k+1}} \boldsymbol{\Phi}\left(t_{k+1}, t\right) \boldsymbol{G}(t)\left[\int_{t_{j}}^{t_{j+1}} E\left[\boldsymbol{w}(t) \boldsymbol{w}^{\mathrm{T}}(\tau)\right] \cdot \boldsymbol{G}^{\mathrm{T}}(\tau) \boldsymbol{\Phi}^{\mathrm{T}}\left(t_{k+1}, \tau\right) \mathrm{d} \tau\right] \mathrm{d} t\\
 &= \int_{t_{k}}^{t_{k+1}} \boldsymbol{\Phi}\left(t_{k+1}, t\right) \boldsymbol{G}(t)\left[\int_{t_{j}}^{t_{j+1}} \boldsymbol{q} \delta(t-\tau) \boldsymbol{G}^{\mathrm{T}}(\tau) \boldsymbol{\Phi}\left(t_{k+1}, \tau\right) \mathrm{d} \tau\right] \mathrm{d} t
-\end{aligned}  \tag{11}
+\end{aligned}  \tag{12}
 $$
-于是看到，当$t！=\tau$的时候，因为狄更斯函数的关系导致积分值为0；而当$t==\tau$的时候，整个积分有值，为：
+于是看到，当$t！=\tau$的时候，因为狄更斯函数的关系导致积分值为0；而当$t==\tau$的时候，整个积分不为0：
 $$
-\left.E\left[\boldsymbol{W}_{k} \boldsymbol{W}_{j}^{\mathrm{T}}\right]\right|_{j=k}=\int_{t_{k}}^{t_{k+1}} \boldsymbol{\Phi}\left(t_{k+1}, t\right) \boldsymbol{G}(t) \boldsymbol{q} \boldsymbol{G}^{\mathrm{T}}(t) \boldsymbol{\Phi}^{\mathrm{T}}\left(t_{k+1}, t\right) \mathrm{d} t \tag{12}
+\left.E\left[\boldsymbol{W}_{k} \boldsymbol{W}_{j}^{\mathrm{T}}\right]\right|_{j=k}=\int_{t_{k}}^{t_{k+1}} \boldsymbol{\Phi}\left(t_{k+1}, t\right) \boldsymbol{G}(t) \boldsymbol{q} \boldsymbol{G}^{\mathrm{T}}(t) \boldsymbol{\Phi}^{\mathrm{T}}\left(t_{k+1}, t\right) \mathrm{d} t \tag{13}
 $$
 对于离散情况而言，如果采样周期足够短，我们可以简单的假设在$t \in [t_k, t_{k+1}]$这段时间内，转移矩阵$\Phi$和驱动矩阵$G$均不变化，于是整个**误差状态**传递过程就比较明了了：
 
-1. 通过公式（7）获得误差状态**微分方程**的传递矩阵$\mathbf{F(t)}$；
-2. 通过公式（10）获得误差状态的转移矩阵$\mathbf{\Phi(t_{k+1}, t_k)}$，这里通常使用泰勒展开，论文中保留到了三阶；
-3. 通过公式（12）获得误差状态的协方差矩阵；
+1. 通过公式（9）获得误差状态**微分方程**的传递矩阵$\mathbf{F(t)}$；
+2. 通过公式（11）获得**误差状态**的转移矩阵$\mathbf{\Phi(t_{k+1}, t_k)}$，这里通常使用泰勒展开，论文中保留到了三阶；
+3. 通过公式（13）获得误差状态的系统协方差矩阵$\mathrm{Q}$；
 
-整个过程完成了卡尔曼滤波的预测阶段；
+&nbsp;
+
+### IMU误差状态的预测部分
+
+由上面的推导可以得到以IMU误差状态为估计量的KF的预测过程（这里直接在离散时域上推导）：
+$$
+\begin{aligned}
+\begin{cases}
+\mathrm{\tilde{x}_{k+1}^I} &= \Phi(\mathrm{k+1},\mathrm{k})\mathrm{\tilde{x}_k^I} \\
+\mathrm{P_{k+1|k}^I} &=\Phi(\mathrm{k+1},\mathrm{k})\mathrm{P_{k|k}^I}\Phi(\mathrm{k+1},\mathrm{k})^T + \Phi(\mathrm{k+1},\mathrm{k})\mathrm{G}\mathrm{N}\mathrm{G}^T\Phi(\mathrm{k+1},\mathrm{k})^T
+\end{cases}
+\end{aligned}  \tag{14}
+$$
+其中：
+
+1. 转移矩阵$\Phi(k+1, k)$由公式（11）算的的闭式解表示，程序中采用了泰勒展开的前三阶表示；
+2. 矩阵G为微分方程的噪声驱动矩阵，这里假设在k到k+1时刻，该矩阵恒定不变；
+3. 噪声协方差矩阵N是IMU的固有属性，这些值可以由数据手册获得，也可以根据实际数据估计一下；
+
+----
+
+### Camera误差状态的预测部分
+
