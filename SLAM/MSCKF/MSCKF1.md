@@ -65,13 +65,17 @@ $$
 
 IMU状态变量一如既往的还是用5个变量表示，这里同时加上了相机与IMU的外参，如下：
 $$
-\mathrm{X}_{IMU}=\begin{bmatrix} ^{I}_{G}\overline{q}^T & b_g^{T} & ^{G}v_{I}^{T} & b_a^{T} & ^{G}p_{I}^{T} & ^{I}_{C}\overline{q} & ^{I}p_{C} \end{bmatrix}^{T}   \tag{1}
+\mathrm{X}_{IMU}=\begin{bmatrix} ^{I}_{G}\overline{q}^T & b_g^{T} & ^{G}v_{I}^{T} & b_a^{T} & ^{G}p_{I}^{T} & ^{C}_{I}\overline{q} & ^{I}p_{C} \end{bmatrix}^{T}   \tag{1}
 $$
 IMU的error-state向量表示如下：
 $$
-\tilde{\mathrm{X}}_{IMU}=\begin{bmatrix} ^{I}_{G}\delta{\theta^T} & \tilde{b}_g^T & ^{G}\tilde{v}_{I}^T & \tilde{b}_{a}^T & ^{G}\tilde{p}_{I}^{T} & _{C}^{I}\delta{\theta}^T & ^{I}p_{C}^T \end{bmatrix}^{T}   \tag{2}
+\tilde{\mathrm{X}}_{IMU}=\begin{bmatrix} ^{I}_{G}\delta{\theta^T} & \tilde{b}_g^T & ^{G}\tilde{v}_{I}^T & \tilde{b}_{a}^T & ^{G}\tilde{p}_{I}^{T} & _{I}^{C}\delta{\theta}^T & ^{I}p_{C}^T \end{bmatrix}^{T}   \tag{2}
 $$
-其中$\delta{\theta}$为旋转向量，近似由$\delta{\overline{q}}=\left[\frac{1}{2}\delta{\theta}^T, 1\right]^T$表示，前面的字母仅仅指示该旋转向量是属于哪个旋转的，就意味着假设了旋转角度很小，因为是error-state，所以这个假设是十分成立的；
+这边稍微对Notation进行一下说明：
+
+- 对于旋转的误差向量$\delta{\theta}$来说，我们通常认为其表示绕一个轴向旋转一个角度，这个轴向其实是有参考系的，一般情况下，**算法求解的旋转向量的参考系均为估计的机体坐标系（也可以说是摄动坐标系）**，即$\mathbf{\hat{L}}$或者$\mathbf{\hat{I}}$，而公式（2）中没有实际的体现出来，误差旋转向量前的字母完全是为了区别开IMU位姿和IMU与Camera外参；
+- 对于非旋转的误差向量来说，他们均是在世界坐标系下表示的，所以前面的字母{G}、{I}和{C}均是有意义的，表示它的参考坐标系；
+- 公式（2）中的IMU和Camera的相机外参中旋转的定义方向是不同的（实际上，如果按照参考3中的定义，那么它后面AppendixB中的Jacobian是不对的，且S-MSCKF的工程中，它的变量也是用IMU到Camera的旋转方向表示的）；
 
 &nbsp;
 
@@ -83,7 +87,7 @@ $$
 $$
 对应的error-state为：
 $$
-\mathrm{\tilde{X}_{k}}=\begin{bmatrix}\mathrm{\tilde{X}_{IMU}} & \delta{\theta}_{C_1} & ^{G}\widehat{p}_{C_1}^T & ... & \delta{\theta}_{C_N} & ^{G}\tilde{p}_{C_N}^T	\end{bmatrix}^T  \tag{4}
+\mathrm{\tilde{X}_{k}}=\begin{bmatrix}\mathrm{\tilde{X}_{IMU}} & \delta{\theta}_{C_1} & ^{G}\tilde{p}_{C_1}^T & ... & \delta{\theta}_{C_N} & ^{G}\tilde{p}_{C_N}^T	\end{bmatrix}^T  \tag{4}
 $$
 &nbsp;
 
@@ -152,7 +156,7 @@ $$
 
 由IMU的运动方程可以得到一个非线性的微分方程，如下：
 $$
-\mathrm{\dot{x}}=\mathbf{f}(t, \mathrm{x}) \tag{7}
+\mathrm{\dot{X}_{IMU}}=\mathbf{f}(t, \mathrm{X_{IMU}}) \tag{7}
 $$
 可以使用参考2中的Appendix A中的方法对状态量进行更新，在S-MSCKF中采用的是RK4的方法。
 
@@ -174,11 +178,11 @@ $$
 
 ## MSCKF位姿估计——预测阶段（predict）
 
-这部分就着重推导以误差状态变量为参数的ESKF了。
+这部分着重推导以误差状态变量为参数的EKF（也叫作ESKF）的预测阶段：
 
 ### IMU误差状态的微分方程
 
-这部分请读者参考参考2第五章的内容，这里直接给出结论，如下：
+这部分请读者参考参考2第五章的内容，这里直接给出结论，如下，其中考虑了相机与IMU的外参变量：
 $$
 \dot{\tilde{\mathbf{X}}}_{\mathrm{IMU}}=\mathbf{F} \tilde{\mathbf{X}}_{\mathrm{IMU}}+\mathbf{G} \mathbf{n}_{\mathrm{IMU}}  \tag{9}
 $$
@@ -254,8 +258,8 @@ $$
 $$
 \begin{aligned}
 \begin{cases}
-\mathrm{\tilde{x}_{k+1}^I} &= \Phi(\mathrm{k+1},\mathrm{k})\mathrm{\tilde{x}_k^I} \\
-\mathrm{P_{k+1|k}^I} &=\Phi(\mathrm{k+1},\mathrm{k})\mathrm{P_{k|k}^I}\Phi(\mathrm{k+1},\mathrm{k})^T + \Phi(\mathrm{k+1},\mathrm{k})\mathrm{G}\mathrm{N}\mathrm{G}^T\Phi(\mathrm{k+1},\mathrm{k})^T
+\mathrm{\tilde{x}_{k+1}^{IMU}} &= \Phi(\mathrm{k+1},\mathrm{k})\mathrm{\tilde{x}_k^{IMU}} \\
+\mathrm{P_{k+1|k}^{IMU}} &=\Phi(\mathrm{k+1},\mathrm{k})\mathrm{P_{k|k}^{IMU}}\Phi(\mathrm{k+1},\mathrm{k})^T + \Phi(\mathrm{k+1},\mathrm{k})\mathrm{G}\mathrm{N}\mathrm{G}^T\Phi(\mathrm{k+1},\mathrm{k})^T
 \end{cases}
 \end{aligned}  \tag{14}
 $$
@@ -268,4 +272,74 @@ $$
 ----
 
 ### Camera误差状态的预测部分
+
+因为在预测阶段并没有相机姿态的信息，因此对于k+1时刻之前的误差状态其实都是不变的，对于最新时刻的相机位姿的误差状态，算法直接给0就可以了，**而且其实对于ESKF而言，每次使用观测更新完误差变量之后，当次的误差变量是要reset为0的，所以其实每次的预测方程我们仅仅关注协方差矩阵的部分就足够了**，所以下面主要分三个部分推导一下协方差的更新：
+
+#### k+1帧之前的Camera自身的协方差更新
+
+由于Camera这部分没有任何的信息，因此对于预测部分，可以认为其状态转移矩阵为单位阵，噪声驱动矩阵为全零矩阵，所以Camera的协方差不做变化；
+$$
+\mathrm{P_{k+1|k}^{CC}}=\mathrm{P_{k}^{CC}} \tag{15}
+$$
+&nbsp;
+
+#### k+1帧之前的IMU与Camera的协方差更新
+
+该部分因为IMU的状态更新了，因此IMU方差（这里说是方差是想把IMU与Camera看做两个简单的变量）发生变化，导致IMU与Camera的协方差变化，如下：
+$$
+\begin{aligned}
+\mathrm{P_{k+1|k}^{IC}}&=\mathrm{E}((\mathrm{\tilde{x}^{IMU}_{k+1|k}-\hat{\tilde{x}}^{IMU}_{k+1|k}})(\mathrm{\tilde{x}^{CAM}_{k+1|k}-\hat{\tilde{x}}^{CAM}_{k+1|k}})) \\
+&=\mathrm{E}(\Phi(k+1,k)(\mathrm{\tilde{x}^{IMU}_{k}-\hat{\tilde{x}}^{IMU}_{k}})(\mathrm{\tilde{x}^{CAM}_{k}-\hat{\tilde{x}}^{CAM}_{k}})) \\
+&=\Phi(k+1, k)\mathrm{E}((\mathrm{\tilde{x}^{IMU}_{k}-\hat{\tilde{x}}^{IMU}_{k}})(\mathrm{\tilde{x}^{CAM}_{k}-\hat{\tilde{x}}^{CAM}_{k}})) \\
+&=\Phi(k+1,k)\mathrm{P_{k}^{IC}}
+\end{aligned}  \tag{16}
+$$
+&nbsp;
+
+#### k+1帧的协方差初值
+
+对于k+1帧来说，因为是从IMU的位姿直接拿过来使用的，因此k+1帧的误差向量初值与当前IMU的误差向量的协方差息息相关，具体关系主要由公式（8）得到：
+
+设k+1帧的误差向量为$^{C}_{G}\delta{\theta}$和$\mathrm{^{G}{\tilde{p}}_{C}}$，该误差向量与IMU的误差向量关系如下：
+
+##### 旋转的误差向量
+
+四元数的推导因为涉及到左乘矩阵和右乘矩阵等等，推导有些繁琐，这里使用旋转矩阵的方法：
+$$
+\begin{aligned}
+\mathrm{R(_{G}^{C}\delta{\theta})} = \mathrm{I_{3x3}}-[_{G}^{C}\delta{\theta}]_{\times} &= \mathrm{R_{G}^{C}}\mathrm{\hat{R_{G}^{C}}}^T \\
+&=\underbrace{\mathrm{R(_{I}^{C}\delta{\theta})}\mathrm{\hat{R}_{I}^{C}}\mathrm{R(_{G}^{I}\delta{\theta})\mathrm{\hat{R}_{G}^{I}}}}_{\mathrm{R_{G}^{C}}} (\underbrace{\mathrm{\hat{R}_{I}^{C}}\mathrm{\hat{R}_{G}^{I}}}_{\mathrm{\hat{R_{G}^{C}}}})^T \\
+&=(\mathrm{I_{3x3}}-[_{I}^{C}\delta{\theta}]_{\times})\mathrm{\hat{R}_{I}^{C}}(\mathrm{I_{3x3}}-[_{G}^{I}\delta{\theta}]_{\times})(\mathrm{\hat{R}_{I}^{C}})^T \\
+&=\mathrm{I_{3x3}}-[_{I}^{C}\delta{\theta}]_{\times}-\mathrm{\hat{R}_{I}^{C}}[_{G}^{I}\delta{\theta}]_{\times}(\mathrm{\hat{R}_{I}^{C}})^T \\
+&= \mathrm{I_{3x3}}-[_{I}^{C}\delta{\theta}]_{\times}-[\mathrm{\hat{R}_{I}^{C}}_{G}^{I}\delta{\theta}]_{\times} + o(2)
+\end{aligned}
+$$
+省略最后的二阶无穷小，并且等号左右两边消元，将反对称矩阵映射回向量空间可以推得：
+$$
+_{G}^{C}\delta{\theta} = \mathrm{\hat{R}_{I}^{C}}_{G}^{I}\delta{\theta} + _{I}^{C}\delta{\theta} \tag{17}
+$$
+&nbsp;
+
+##### 位置的误差向量
+
+$$
+\begin{aligned}
+^{G}\mathrm{\tilde{p}_{C}} &= ^{G}\mathrm{{p}_{C}}-^{G}\mathrm{\hat{p}_{C}} \\
+&= \underbrace{^{G}\mathrm{\hat{p}_{I}}+^{G}\mathrm{\tilde{p}_{I}}+(\mathrm{R(_{G}^{I}\delta{\theta})R_{G}^{I})^{T}(^{I}\mathrm{\hat{p}_{C}}+^{I}\mathrm{\tilde{p}_{C}})}}_{^{G}\mathrm{{p}_{C}}}-(\underbrace{^{G}\mathrm{\hat{p}_{I}}+(\mathrm{R_{G}^{I})^{T} {}^{I}\mathrm{\hat{p}_{C}}}}_{^{G}\mathrm{\hat{p}_{C}}}) \\
+&= ^{G}\mathrm{\tilde{p}_{I}}+\mathrm{R_{G}^{I}}^{T}(\mathrm{I_{3x3}}+[_{G}^{I}\delta{\theta}]_{\times})^{I}\mathrm{\hat{p}_{C}}+\mathrm{R_{G}^{I}}^{T}(\mathrm{I_{3x3}}+[_{G}^{I}\delta{\theta}]_{\times})^{I}\mathrm{\tilde{p}_{C}}-(\mathrm{R_{G}^{I})^{T} {}^{I}\mathrm{\hat{p}_{C}}} \\
+&= ^{G}\mathrm{\tilde{p}_{I}}+\mathrm{R_{G}^{I}}^{T}([_{G}^{I}\delta{\theta}]_{\times})^{I}\mathrm{\hat{p}_{C}}+\mathrm{R_{G}^{I}}^{T}\mathrm{\tilde{p}_{C}}+o(2)
+\end{aligned}
+$$
+
+省略二阶无穷小并根据反对称矩阵相乘的性质得：
+$$
+^{G}\mathrm{\tilde{p}_{C}} = -\mathrm{R_{G}^{I}}^{T}([{}^{I}\mathrm{\hat{p}_{C}}]_{\times}) {}_{G}^{I}\delta{\theta} +^{G}\mathrm{\tilde{p}_{I}}+\mathrm{R_{G}^{I}}^{T}\mathrm{\tilde{p}_{C}} \tag{18}
+$$
+&nbsp;
+
+##### Camera与IMU的状态转移方程
+
+
+
+
 
