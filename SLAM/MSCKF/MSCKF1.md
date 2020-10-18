@@ -1,11 +1,11 @@
-# [周结1]——MSCKF论文笔记
+# MSCKF笔记——预测部分
 
 ## Reference
 
 1. A Multi-State Constraint Kalman Filter for Vision-aided Inertial Navigation. MSCKF1.0的论文；
 2. Quaternion Kinematics for Error-State KF. 关于四元数以及ESKF的论文；
 3. Robust Stereo Visual Inertial Odometry for Fast Autonomous Flight. S-MSCKF对应的论文；
-4. https://github.com/KumarRobotics/msckf_vio 双目MSCKF的工程；
+4. https://github.com/KumarRobotics/msckf_vio S-MSCKF的工程；
 5. https://zhuanlan.zhihu.com/p/76341809 知乎上大佬对MSCKF的总结，本文没有过多的程序方面的讲解，都是从理论上推导的，也是个人的一些解惑过程；
 
 > PS: MSCKF的工程算是我见过最贴近论文的工程了，基本上工程中的数学部分在论文里面都给了出来，所以对于MSCKF1.0来说，论文是一定要弄懂的。本篇将参考[1]和参考[3]放在一起进行梳理，因为两者确实很相似，不过在参考[3]中作者对能观性进行了一定程度的补偿。
@@ -19,6 +19,8 @@
 ### 坐标系的表示问题
 
 论文中{G}为世界(global)坐标系，{I}为IMU坐标系(或者称为机体坐标系)。
+
+---
 
 ### 位姿表示方式
 
@@ -40,17 +42,18 @@ $$
 $$
 - 四元数的扰动展开发生了变化：
 
-  - Hamilton表示法中，扰动四元数表示为
+  - 在Hamilton表示法中，扰动四元数表示为
     $$
     \mathrm{R}(\mathbf{\delta{q}}) \approx \mathrm{R}(\left[1, \frac{1}{2}\mathrm{\delta{\theta}}\right])=\mathrm{I_{3x3}}+[\delta{\theta}]_{\times}
     $$
-  
-- 在JPL表示法中，扰动四元数表示为：
-    $$
-    \mathrm{R}(\mathbf{\delta{q}}) \approx \mathrm{R}(\left[1, \frac{1}{2}\mathrm{\delta{\theta}}\right])=\mathrm{I_{3x3}}-[\delta{\theta}]_{\times}
-    $$
+    
+  - 在JPL表示法中，扰动四元数表示为：
+      $$
+      \mathrm{R}(\mathbf{\delta{q}}) \approx \mathrm{R}(\left[1, \frac{1}{2}\mathrm{\delta{\theta}}\right])=\mathrm{I_{3x3}}-[\delta{\theta}]_{\times}
+      $$
+      
 
-&nbsp;
+---
 
 ### IMU状态变量的表示方式
 
@@ -77,7 +80,7 @@ $$
 - 对于非旋转的误差向量来说，他们均是在世界坐标系下表示的，所以前面的字母{G}、{I}和{C}均是有意义的，表示它的参考坐标系；
 - 公式（2）中的IMU和Camera的相机外参中旋转的定义方向是不同的（实际上，如果按照参考3中的定义，那么它后面AppendixB中的Jacobian是不对的，且S-MSCKF的工程中，它的变量也是用IMU到Camera的旋转方向表示的）；
 
-&nbsp;
+---
 
 ### 带相机位姿的状态变量表示方式
 
@@ -218,7 +221,7 @@ $$
 >
 > 公式（6）中考虑了地球的自转（MSCKF1.0论文中的做法），但是公式（9）中没有考虑（S-MSCKF论文中的做法）。
 
-&nbsp;
+----
 
 ### IMU误差状态传递过程的推导
 
@@ -250,7 +253,7 @@ $$
 2. 通过公式（11）获得**误差状态**的转移矩阵$\mathbf{\Phi(t_{k+1}, t_k)}$，这里通常使用泰勒展开，论文中保留到了三阶；
 3. 通过公式（13）获得误差状态的系统协方差矩阵$\mathrm{Q}$；
 
-&nbsp;
+----
 
 ### IMU误差状态的预测部分
 
@@ -316,7 +319,7 @@ $$
 $$
 省略最后的二阶无穷小，并且等号左右两边消元，将反对称矩阵映射回向量空间可以推得：
 $$
-_{G}^{C}\delta{\theta} = \mathrm{\hat{R}_{I}^{C}}_{G}^{I}\delta{\theta} + _{I}^{C}\delta{\theta} \tag{17}
+_{G}^{C}\delta{\theta} = \mathrm{\hat{R}_{I}^{C}} {}_{G}^{I}\delta{\theta} + {}_{I}^{C}\delta{\theta} \tag{17}
 $$
 &nbsp;
 
@@ -325,21 +328,72 @@ $$
 $$
 \begin{aligned}
 ^{G}\mathrm{\tilde{p}_{C}} &= ^{G}\mathrm{{p}_{C}}-^{G}\mathrm{\hat{p}_{C}} \\
-&= \underbrace{^{G}\mathrm{\hat{p}_{I}}+^{G}\mathrm{\tilde{p}_{I}}+(\mathrm{R(_{G}^{I}\delta{\theta})R_{G}^{I})^{T}(^{I}\mathrm{\hat{p}_{C}}+^{I}\mathrm{\tilde{p}_{C}})}}_{^{G}\mathrm{{p}_{C}}}-(\underbrace{^{G}\mathrm{\hat{p}_{I}}+(\mathrm{R_{G}^{I})^{T} {}^{I}\mathrm{\hat{p}_{C}}}}_{^{G}\mathrm{\hat{p}_{C}}}) \\
-&= ^{G}\mathrm{\tilde{p}_{I}}+\mathrm{R_{G}^{I}}^{T}(\mathrm{I_{3x3}}+[_{G}^{I}\delta{\theta}]_{\times})^{I}\mathrm{\hat{p}_{C}}+\mathrm{R_{G}^{I}}^{T}(\mathrm{I_{3x3}}+[_{G}^{I}\delta{\theta}]_{\times})^{I}\mathrm{\tilde{p}_{C}}-(\mathrm{R_{G}^{I})^{T} {}^{I}\mathrm{\hat{p}_{C}}} \\
-&= ^{G}\mathrm{\tilde{p}_{I}}+\mathrm{R_{G}^{I}}^{T}([_{G}^{I}\delta{\theta}]_{\times})^{I}\mathrm{\hat{p}_{C}}+\mathrm{R_{G}^{I}}^{T}\mathrm{\tilde{p}_{C}}+o(2)
+&= \underbrace{^{G}\mathrm{\hat{p}_{I}}+^{G}\mathrm{\tilde{p}_{I}}+(\mathrm{R(_{G}^{I}\delta{\theta})\hat{R}_{G}^{I})^{T}(^{I}\mathrm{\hat{p}_{C}}+^{I}\mathrm{\tilde{p}_{C}})}}_{^{G}\mathrm{{p}_{C}}}-(\underbrace{^{G}\mathrm{\hat{p}_{I}}+(\mathrm{\hat{R}_{G}^{I})^{T} {}^{I}\mathrm{\hat{p}_{C}}}}_{^{G}\mathrm{\hat{p}_{C}}}) \\
+&= ^{G}\mathrm{\tilde{p}_{I}}+\mathrm{\hat{R}_{G}^{I}}^{T}(\mathrm{I_{3x3}}+[_{G}^{I}\delta{\theta}]_{\times})^{I}\mathrm{\hat{p}_{C}}+\mathrm{\hat{R}_{G}^{I}}^{T}(\mathrm{I_{3x3}}+[_{G}^{I}\delta{\theta}]_{\times})^{I}\mathrm{\tilde{p}_{C}}-(\mathrm{\hat{R}_{G}^{I})^{T} {}^{I}\mathrm{\hat{p}_{C}}} \\
+&= ^{G}\mathrm{\tilde{p}_{I}}+\mathrm{\hat{R}_{G}^{I}}^{T}([_{G}^{I}\delta{\theta}]_{\times})^{I}\mathrm{\hat{p}_{C}}+\mathrm{\hat{R}_{G}^{I}}^{T}\mathrm{\tilde{p}_{C}}+o(2)
 \end{aligned}
 $$
 
 省略二阶无穷小并根据反对称矩阵相乘的性质得：
 $$
-^{G}\mathrm{\tilde{p}_{C}} = -\mathrm{R_{G}^{I}}^{T}([{}^{I}\mathrm{\hat{p}_{C}}]_{\times}) {}_{G}^{I}\delta{\theta} +^{G}\mathrm{\tilde{p}_{I}}+\mathrm{R_{G}^{I}}^{T}\mathrm{\tilde{p}_{C}} \tag{18}
+^{G}\mathrm{\tilde{p}_{C}} = -\mathrm{\hat{R}_{G}^{I}}^{T}([{}^{I}\mathrm{\hat{p}_{C}}]_{\times}) {}_{G}^{I}\delta{\theta} +^{G}\mathrm{\tilde{p}_{I}}+\mathrm{\hat{R}_{G}^{I}}^{T}\mathrm{\tilde{p}_{C}} \tag{18}
 $$
 &nbsp;
 
 ##### Camera与IMU的状态转移方程
 
+根据公式（17）和（18）很容易得到Camera的误差向量与IMU的误差向量的关系：
+$$
+\mathrm{\tilde{X}^{CAM}_{k+1|k}}=\begin{bmatrix} {}_{G}^{C}\delta{\theta} \\ ^{G}\tilde{p}_{C} \end{bmatrix}=\begin{bmatrix}\mathrm{\hat{R}_{I}^{C}} & \mathbf{0}_{3x3} & \mathbf{0}_{3x3} & \mathbf{0}_{3x3} & \mathbf{0}_{3x3} & \mathbf{I}_{3x3} & \mathbf{0}_{3x3} \\ 
+-\mathrm{\hat{R}_{G}^{I}}^{T}([{}^{I}\mathrm{\hat{p}_{C}}]_{\times}) & \mathbf{0}_{3x3} & \mathbf{0}_{3x3} & \mathbf{0}_{3x3} & \mathbf{I}_{3x3} & \mathbf{0}_{3x3} & \mathrm{\hat{R}_{G}^{I}}^{T} \end{bmatrix} \begin{bmatrix} ^{I}_{G}\delta{\theta} \\ \tilde{b}_g \\ ^{G}\tilde{v}_{I} \\ \tilde{b}_{a} \\ ^{G}\tilde{p}_{I} \\ _{I}^{C}\delta{\theta} \\ ^{I}p_{C} \end{bmatrix} = \mathbf{J}^{CAM}_{IMU} \mathrm{\tilde{X}^{IMU}_{k+1|k}} \tag{19}
+$$
+于是根据线性系统的理论，k+1时刻Camera的协方差为：
+$$
+\mathrm{P}^{CAM}_{k+1|k}=\mathbf{J}_{IMU}^{CAM} \mathrm{P}^{IMU}_{k+1|k} (\mathbf{J}_{IMU}^{CAM})^T  \tag{20}
+$$
 
+----
 
+### 预测部分总结
 
+结合公式（14）（15）（16）（20），容易得出，在预测阶段，协方差的传导（propagation）可以分为两步：
+
+1. 最新帧没有到来的更新：
+   $$
+   \mathrm{P}_{k+1|k}=\begin{bmatrix} \mathrm{P}^{IMU}_{k+1|k} & \Phi(k+1, k)\mathrm{P}^{IC}_{k|k} \\ (\Phi(k+1, k)\mathrm{P}^{IC}_{k|k})^T & \mathrm{P}^{CAM}_{k|k} \end{bmatrix}  \tag{21}
+   $$
+
+2. 最新帧到来，进行状态扩展（state augmentation）:
+   $$
+   \mathbf{P}_{k+1 \mid k} \leftarrow\left[\begin{array}{c}
+   \mathbf{I}_{6 N+21} \\
+   \mathbf{J}
+   \end{array}\right] \mathbf{P}_{k+1 \mid k}\left[\begin{array}{c}
+   \mathbf{I}_{6 N+21} \\
+   \mathbf{J}
+   \end{array}\right]^{T} \tag{22}
+   $$
+   这个地方和论文中也不一样，论文中的协方差均是$\mathbf{P}_{k|k}$，但是实际上应该是经过预测步骤更新过的协方差矩阵进行扩充；
+
+&nbsp;
+
+------
+
+## 总结
+
+本文主要介绍了MSCKF的预测部分，重点主要是：
+
+1. 对于MSCKF而言，待估计量为Error-State；
+2. 由IMU的运动方程可以对Normal-State进行积分；
+3. 由Error-State的微分方程可以推导得到状态转移方程的闭式解，进而构成了整个Kalman Filter的预测部分；
+
+&nbsp;
+
+-----
+
+## Appendix A
+
+这部分重点说一下JPL四元数的一些理解。https://mathworld.wolfram.com/RotationMatrix.html
+
+### 为什么有JPL的表示方法？
 
