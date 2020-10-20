@@ -50,17 +50,25 @@ $$
 
 {xyz}坐标系绕着其中中的z轴，正向旋转45°，那么其中在{xyz}坐标系下的点A如何变化。
 
-从图中不难看出，其实我们在这个过程中是把整个{xyz}的基底进行了旋转，旋转的过程如下：
+<img src="pictures/MSCKF0_1.png" width=500>
+
+根据图能很容易的看出，该种情形下的旋转公式如下：
 $$
-\begin{bmatrix}e_1^{\prime} & e_2^{\prime} & e_3^{\prime}\end{bmatrix} = \begin{bmatrix} \frac{1}{\sqrt{2}} & -\frac{1}{\sqrt{2}} & 0 \\ \frac{1}{\sqrt{2}} & \frac{1}{\sqrt{2}} & 0 \\ 0 & 0 & 1 \end{bmatrix}=\begin{bmatrix}cos(\theta) & -sin(\theta) & 0 \\ sin(\theta) & cos(\theta) & 0 \\ 0 & 0 & 1 \end{bmatrix} \begin{bmatrix} e_1 & e_2 & e_3\end{bmatrix} \tag{1}
+\begin{bmatrix}\sqrt{2} \\ 0 \\ 0 \end{bmatrix} = \mathbf{R_{xyz}^{x'y'z'}} \mathrm{v^{xyz}} =\begin{bmatrix}cos(\theta) & sin(\theta) & 0 \\ -sin(\theta) & cos(\theta) & 0 \\ 0 & 0 & 1 \end{bmatrix} \begin{bmatrix} 1 \\ 1\\ 0 \end{bmatrix} \tag{1}
 $$
-但是要描述对于其中的向量的旋转，我们却不能使用上述的旋转矩阵，因为把$[1, 1, 0]$带入我们发现结果是$[0, \sqrt{2}, 0]$，于是有了主动旋转的概念；
+但是，如果我们把目光放在基底的变化上，就会发现事情没有那么简单。从图中不难看出，如果我们在这个过程中把整个{xyz}的基底进行旋转，则旋转的过程如下：
+$$
+\begin{bmatrix}e_1^{\prime} & e_2^{\prime} & e_3^{\prime}\end{bmatrix} = \begin{bmatrix} \frac{1}{\sqrt{2}} & -\frac{1}{\sqrt{2}} & 0 \\ \frac{1}{\sqrt{2}} & \frac{1}{\sqrt{2}} & 0 \\ 0 & 0 & 1 \end{bmatrix}=\begin{bmatrix}cos(\theta) & -sin(\theta) & 0 \\ sin(\theta) & cos(\theta) & 0 \\ 0 & 0 & 1 \end{bmatrix} \begin{bmatrix} e_1 & e_2 & e_3\end{bmatrix} = \mathbf{^{x'y'z'}_{xyz}C}\begin{bmatrix} e_1 & e_2 & e_3\end{bmatrix} \tag{2}
+$$
+于是我们得到如下的结论：**在被动旋转的表示方法下，整个坐标系绕着一个旋转轴正向旋转（也就是逆时针）等于把其中的向量绕着相同的旋转轴逆向旋转（也就是顺时针）**，有公式：
+$$
+\mathbf{R_{xyz}^{x'y'z'}}=\mathbf{R_z(\theta)}=\mathbf{^{x'y'z'}_{xyz}C}^T=\mathbf{R_z(-\theta)} \tag{3}
+$$
+&nbsp;
 
+### 主动旋转
 
-
-
-
-<img src="pictures/MSCKF0_1.png">
+如果旋转轴依旧是{xyz}中的z轴，而旋转角度也还是45°，但是这次直接旋转A点的话，A点如何变化呢？
 
 
 
