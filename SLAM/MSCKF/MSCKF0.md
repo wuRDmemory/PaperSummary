@@ -14,8 +14,9 @@
 
 1. Active versus Passive Rotations. 该论文比较清晰的解释了“主动旋转”和“被动旋转”；
 2. Why and How to Avoid the Flipped Quaternion Multiplication. 该论文比较系统的总结了Hamilton和Shuster两种四元数的运用，然后作者提出了一种四元数到旋转矩阵的映射，可以保持使用Hamilton四元数的同时，保持乘法的Homogeneous；
-3. Quaternion kinematics for the error-state Kalman filter. ESKF中的前4章也都是在讲四元数和旋转的事情；
-4. 还有一篇邱博的笔记，但是实在找不到链接；
+3. Quaternion kinematics for the error-state Kalman filter. ESKF中的前4章也都是在讲四元数和旋转的事情，该篇文章主要使用Hamilton表示法的四元数；
+4. Indirect Kalman Filter for 3D Attitude Estimation. MARS LAB关于四元数表示旋转的一篇文章，里面详细推导了JPL表示下的四元数的公式；
+5. 还有一篇邱博的笔记，但是实在找不到链接；
 
 **特别希望的是，在本文之前，大家对于四元数和旋转矩阵相信都有自己的理解，但是希望读者暂时忘记之前的理解，因为很可能这些理解会导致你很不理解本文的变换关系，就像参考2中提醒读者的一样：If a reader is unaware of the split, the discovery that two different quaternion multiplications are in use, and that in fact “the other” was employed, might be made only after several failures, during which the confusion may even have spread to third parties.**
 
@@ -64,6 +65,8 @@ $$
 $$
 \mathbf{R}=\mathbf{R_z(-\theta)}=\mathbf{^{b}_{G}C}^T=\mathbf{R_z(\theta)} \tag{3}
 $$
+这里把旋转矩阵R的方向定为{b}系到{G}系，就好像原先在{b}系中的向量经过了旋转矩阵旋转到了{G}系一样；
+
 &nbsp;
 
 ### 主动旋转
@@ -98,12 +101,41 @@ $$
 
 ## 乱入——四元数对于旋转的表示
 
+四元数与旋转向量之间的关系如下：
+$$
+\mathbf{q}=\mathrm{sin}(\frac{\theta}{2})+\mathrm{cos}(\frac{\theta}{2})\mathbf{u_R}=[\mathrm{sin}(\frac{\theta}{2}), \mathrm{cos}(\frac{\theta}{2})\mathbf{u_R}]  \tag{7}
+$$
+其中旋转轴是在参考系上的。
 
+随后定义虚部的乘法运算法则：
+$$
+\begin{cases}
+i^2=j^2=k^2=ijk=1 \\
+i j=-j i=k \\
+ j k=-k j=i \\ 
+ k i=-i k=j
+\end{cases} \tag{8}
+$$
+这里对四元数的其他的数学性质就不做过多赘述，感兴趣的可以到参考3和参考4中看。
 
+Hamilton提出四元数其实是铁站边**被动旋转**的，也就是说四元数其实表示的是对于坐标系的旋转。有如下的公式：
+$$
+\mathcal{X}_{B}=\mathbf{q}\odot \mathcal{X}_{A} \odot \mathbf{q^{-1}} \tag{9}
+$$
+其中$\mathcal{X}_{A}$和$\mathcal{X}_{B}$表示坐标系{A}和坐标系{B}。
 
+根据Hamilton规定的虚部乘法运算法则：，有：
+$$
+\begin{aligned}
+\mathcal{X}_{B} &= \mathbf{^{A}_{B}q}\odot \mathcal{X}_{A} \odot \mathbf{^{A}_{B}q^{-1}} \\
+&=[\mathbf{q^{-1}}]_{R}[\mathbf{q}]_{L} \mathcal{X}_{A} \\
+&=\left[\begin{array}{ccc}
+q_{w}^{2}+q_{x}^{2}-q_{y}^{2}-q_{z}^{2} & 2\left(q_{x} q_{y}-q_{w} q_{z}\right) & 2\left(q_{x} q_{z}+q_{w} q_{y}\right) \\
+2\left(q_{x} q_{y}+q_{w} q_{z}\right) & q_{w}^{2}-q_{x}^{2}+q_{y}^{2}-q_{z}^{2} & 2\left(q_{y} q_{z}-q_{w} q_{x}\right) \\
+2\left(q_{x} q_{z}-q_{w} q_{y}\right) & 2\left(q_{y} q_{z}+q_{w} q_{x}\right) & q_{w}^{2}-q_{x}^{2}-q_{y}^{2}+q_{z}^{2}
+\end{array}\right]\mathcal{X}_{A} \\
+&=\mathbf{R_{A}^{B}}\mathcal{X}_{A}
+\end{aligned}   \tag{10}
+$$
+这里读者可以代入上面的被动旋转的例子进来，发现旋转矩阵R刚好是对坐标系基底进行旋转的旋转矩阵。
 
-当我们说起旋转，似乎大家的焦点都关注在转了多少度，而忽略了一个很重要的部分——旋转轴。作为一个矢量，旋转轴具有方向，也因此引入了一个容易绕进去的东西——参考系。
-
-于是，假设有这样一个问题——一个四元数表示的旋转，它的旋转轴是怎么样的？是参考于哪个系的？
-
-所以这里先定义
