@@ -55,7 +55,7 @@ $$
 
 根据图能很容易的看出，该种情形下的旋转公式如下：
 $$
-\begin{bmatrix}\sqrt{2} \\ 0 \\ 0 \end{bmatrix} = \mathbf{R} \mathrm{v^{G}} =\begin{bmatrix}cos(\theta) & sin(\theta) & 0 \\ -sin(\theta) & cos(\theta) & 0 \\ 0 & 0 & 1 \end{bmatrix} \begin{bmatrix} 1 \\ 1\\ 0 \end{bmatrix} \tag{1}
+\begin{bmatrix}\sqrt{2} \\ 0 \\ 0 \end{bmatrix} = \mathbf{R} \mathrm{v} =\begin{bmatrix}cos(\theta) & sin(\theta) & 0 \\ -sin(\theta) & cos(\theta) & 0 \\ 0 & 0 & 1 \end{bmatrix} \begin{bmatrix} 1 \\ 1\\ 0 \end{bmatrix} \tag{1}
 $$
 但是，如果我们把目光放在基底的变化上，就会发现事情没有那么简单。从图中不难看出，如果我们在这个过程中把整个{xyz}的基底进行旋转，则旋转的过程如下：
 $$
@@ -77,7 +77,7 @@ $$
 
 根据图能很容易的看出，该种情形下的旋转公式如下：
 $$
-\begin{bmatrix}0 \\ \sqrt{2} \\ 0 \end{bmatrix} = \mathbf{R} \mathrm{v^{xyz}} =\begin{bmatrix}cos(\theta) & -sin(\theta) & 0 \\ sin(\theta) & cos(\theta) & 0 \\ 0 & 0 & 1 \end{bmatrix} \begin{bmatrix} 1 \\ 1\\ 0 \end{bmatrix} \tag{4}
+\begin{bmatrix}0 \\ \sqrt{2} \\ 0 \end{bmatrix} = \mathbf{R} \mathrm{v} =\begin{bmatrix}cos(\theta) & -sin(\theta) & 0 \\ sin(\theta) & cos(\theta) & 0 \\ 0 & 0 & 1 \end{bmatrix} \begin{bmatrix} 1 \\ 1\\ 0 \end{bmatrix} \tag{4}
 $$
 同样，如果我们把目光放在基底的变化上，就会发现事情没有那么简单。从图中不难看出，如果我们在这个过程中把整个{xyz}的基底进行旋转，则旋转的过程如下：
 $$
@@ -100,6 +100,10 @@ $$
 ----
 
 ## 乱入——四元数对于旋转的表示
+
+这一小节我们具体来看一下Hamilton和Shuster表示法的“爱恨情仇”。
+
+### Hamilton四元数表示法
 
 四元数与旋转向量之间的关系如下：
 $$
@@ -127,15 +131,44 @@ $$
 根据Hamilton规定的虚部乘法运算法则：，有：
 $$
 \begin{aligned}
-\mathcal{X}_{B} &= \mathbf{^{A}_{B}q}\odot \mathcal{X}_{A} \odot \mathbf{^{A}_{B}q^{-1}} \\
+\mathcal{X}_{B} &= \mathbf{_{A}^{B}q}\odot \mathcal{X}_{A} \odot \mathbf{_{A}^{B}q^{-1}} \\
 &=[\mathbf{q^{-1}}]_{R}[\mathbf{q}]_{L} \mathcal{X}_{A} \\
 &=\left[\begin{array}{ccc}
 q_{w}^{2}+q_{x}^{2}-q_{y}^{2}-q_{z}^{2} & 2\left(q_{x} q_{y}-q_{w} q_{z}\right) & 2\left(q_{x} q_{z}+q_{w} q_{y}\right) \\
 2\left(q_{x} q_{y}+q_{w} q_{z}\right) & q_{w}^{2}-q_{x}^{2}+q_{y}^{2}-q_{z}^{2} & 2\left(q_{y} q_{z}-q_{w} q_{x}\right) \\
 2\left(q_{x} q_{z}-q_{w} q_{y}\right) & 2\left(q_{y} q_{z}+q_{w} q_{x}\right) & q_{w}^{2}-q_{x}^{2}-q_{y}^{2}+q_{z}^{2}
 \end{array}\right]\mathcal{X}_{A} \\
-&=\mathbf{R_{A}^{B}}\mathcal{X}_{A}
+&=\mathbf{_{A}^{B}R}\mathcal{X}_{A}
 \end{aligned}   \tag{10}
 $$
-这里读者可以代入上面的被动旋转的例子进来，发现旋转矩阵R刚好是对坐标系基底进行旋转的旋转矩阵。
+这里可以把上面关于旋转的例子带入进来，即旋转轴在{R}系，旋转角为45°，对应四元数为$[\mathrm{cos}(\frac{\theta}{2}), 0, 0, \mathrm{sin}(\frac{\theta}{2})]$，则公式（10）描述的旋转刚好就是对于坐标系的旋转。
+
+于是对于Hamilton四元数而言，与旋转向量的映射关系如下：
+$$
+\mathbf{C_s}(_{G}^{b}\mathbf{q})={}_{G}^{b}R  \tag{11}
+$$
+十分需要说明的是，该旋转向量仅仅适用于对于坐标系的旋转！所以笔者这里把旋转矩阵的坐标系字母写在了前面。
+
+&nbsp;
+
+### Shuster表示法
+
+Hamilton表示法对于天生就是运用于位姿表示的表示法，但是对于旋转一个向量或者点的话却极其不友好（但是并不是不对！），具体而言：对于一个在{b}系的向量，如果希望把它用四元数转到{G}系的话，则需要使用$\mathbf{_{G}^{b}q}$表示的被动旋转来旋转，这样的自然意义是想把这个向量由{b}转到{G}的方向旋转的，有：
+$$
+\mathbf{v^G}=\mathbf{_{G}^{b}q} \odot \mathbf{v^b} \odot \mathbf{_{G}^{b}q^{-1}} = \mathbf{_{G}^{b}R}\mathbf{v^b} \cong \mathbf{R}_{b}^{G}\mathbf{v^b}  \tag{12}
+$$
+这里的$\cong$表示期望相等。**因为本质上四元数表示的旋转是对于坐标系的旋转，如果应用于向量，则旋转矩阵应该是${}_{G}^{b}\mathbf{R}$的逆才对**！如果硬生生的用四元数表示对于向量的**主动旋转**，那么相同的旋转向量则会像上述的主动旋转中的公式（4）一样，与被动旋转对应的主动旋转公式（1）意义和数值上都会相差甚远。
+
+同时，如果表示连续的坐标旋转的话，Hamilton表示法的四元数还会出现inconsistent的情况，具体而言：假设另有坐标系{I}，如果希望把{G}系的向量用四元数转到{I}系的话，则需要用四元数$\mathbf{_{I}^{G}q}$对{G}系下的向量进行旋转，则有：
+$$
+\mathbf{v^I}=\mathbf{_{I}^{G}q} \odot \mathbf{v^G} \odot \mathbf{_{I}^{G}q^{-1}} = {}_{I}^{G}\mathbf{R}\mathbf{v^G} \cong \mathbf{R}_{G}^{I}\mathbf{v^G}  \tag{13}
+$$
+ 联合公式（12）和（13），则有：
+$$
+\begin{aligned}
+\mathbf{v^I}&=\mathbf{_{b}^{I}q} \odot \mathbf{_{G}^{b}q} \odot \mathbf{v^G} \odot \mathbf{_{G}^{b}q^{-1}} \odot \mathbf{_{b}^{I}q^{-1}} \\
+&=()
+\end{aligned}
+$$
+
 
