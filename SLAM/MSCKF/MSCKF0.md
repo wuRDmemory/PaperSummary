@@ -145,30 +145,79 @@ $$
 
 于是对于Hamilton四元数而言，与旋转向量的映射关系如下：
 $$
-\mathbf{C_s}(_{G}^{b}\mathbf{q})={}_{G}^{b}R  \tag{11}
+\mathbf{C_s}(_{G}^{b}\mathbf{q}) \sim {}_{G}^{b}\mathbf{R}(\mathbf{R}_{G}^{b})  \tag{11}
 $$
-十分需要说明的是，该旋转向量仅仅适用于对于坐标系的旋转！所以笔者这里把旋转矩阵的坐标系字母写在了前面。
+> Attention:
+>
+> 1. 上式的旋转关系按最初的用意来说只能用于坐标系的旋转，所以笔者把${}_{G}^{b}\mathbf{R}$写在前面；
+> 2. 但是如果要旋转的变量并不是坐标系，而是一个向量的话，那么用四元数的乘法则相当于乘了$\mathbf{R}_{G}^{b}$矩阵；
 
 &nbsp;
 
-### Shuster表示法
+### Hamilton四元数表示法的缺陷
 
-Hamilton表示法对于天生就是运用于位姿表示的表示法，但是对于旋转一个向量或者点的话却极其不友好（但是并不是不对！），具体而言：对于一个在{b}系的向量，如果希望把它用四元数转到{G}系的话，则需要使用$\mathbf{_{G}^{b}q}$表示的被动旋转来旋转，这样的自然意义是想把这个向量由{b}转到{G}的方向旋转的，有：
+Hamilton表示法对于天生就是运用于位姿表示的表示法，但是对于旋转一个向量或者点的话却极其不友好（但是并不是不对！），具体而言：对于一个在{b}系的向量，如果希望把它用四元数转到{G}系的话，则需要使用$\mathbf{_{G}^{b}q}$表示的被动旋转来旋转，这样的**自然意义**是想把这个向量由{b}转到{G}的方向旋转的，有：
 $$
 \mathbf{v^G}=\mathbf{_{G}^{b}q} \odot \mathbf{v^b} \odot \mathbf{_{G}^{b}q^{-1}} = \mathbf{_{G}^{b}R}\mathbf{v^b} \cong \mathbf{R}_{b}^{G}\mathbf{v^b}  \tag{12}
 $$
 这里的$\cong$表示期望相等。**因为本质上四元数表示的旋转是对于坐标系的旋转，如果应用于向量，则旋转矩阵应该是${}_{G}^{b}\mathbf{R}$的逆才对**！如果硬生生的用四元数表示对于向量的**主动旋转**，那么相同的旋转向量则会像上述的主动旋转中的公式（4）一样，与被动旋转对应的主动旋转公式（1）意义和数值上都会相差甚远。
 
-同时，如果表示连续的坐标旋转的话，Hamilton表示法的四元数还会出现inconsistent的情况，具体而言：假设另有坐标系{I}，如果希望把{G}系的向量用四元数转到{I}系的话，则需要用四元数$\mathbf{_{I}^{G}q}$对{G}系下的向量进行旋转，则有：
+所以如果直接用四元数的乘法作用于一个向量的话，那么得到的结果不管是用意上还是数值上，其实都是不对的。
+
+同时，如果表示连续的坐标旋转的话，Hamilton表示法的四元数还会出现anti-homomorphy的情况，具体而言：假设另有坐标系{I}，如果希望把{G}系的向量用四元数转到{I}系的话，则需要用四元数$\mathbf{_{I}^{G}q}$对{G}系下的向量进行旋转，则有：
 $$
 \mathbf{v^I}=\mathbf{_{I}^{G}q} \odot \mathbf{v^G} \odot \mathbf{_{I}^{G}q^{-1}} = {}_{I}^{G}\mathbf{R}\mathbf{v^G} \cong \mathbf{R}_{G}^{I}\mathbf{v^G}  \tag{13}
 $$
- 联合公式（12）和（13），则有：
+ 联合公式（12）和（13），四元数想表示的旋转规则如下：
 $$
 \begin{aligned}
-\mathbf{v^I}&=\mathbf{_{b}^{I}q} \odot \mathbf{_{G}^{b}q} \odot \mathbf{v^G} \odot \mathbf{_{G}^{b}q^{-1}} \odot \mathbf{_{b}^{I}q^{-1}} \\
-&=()
-\end{aligned}
+\mathbf{v^I}&=\mathbf{_{I}^{G}q} \odot \mathbf{_{G}^{b}q} \odot \mathbf{v^b} \odot \mathbf{_{G}^{b}q^{-1}} \odot \mathbf{_{I}^{G}q^{-1}}  \\
+&=(\mathbf{_{I}^{G}q} \odot \mathbf{_{G}^{b}q}) \odot \mathbf{v^{b}} \odot (\mathbf{_{I}^{G}q} \odot \mathbf{_{G}^{b}q})^{-1} \\
+&=\mathbf{_{I}^{b}q} \odot \mathbf{v^{b}} \odot \mathbf{_{I}^{b}q}^{-1}
+\end{aligned} \tag{14}
 $$
 
+然而，如果使用四元数与旋转矩阵映射关系公式（12）的话，那么公式（14）的连续旋转则变作：
+$$
+\mathbf{C_s}(\mathbf{_{I}^{G}q} \odot \mathbf{_{G}^{b}q})=\mathbf{C_s}(\mathbf{_{I}^{G}q})\mathbf{C_s}(\mathbf{_{G}^{b}q})=\mathbf{R}_{I}^{G}\mathbf{R}_{G}^{b} \not\equiv \mathbf{R}_{b}^{I}
+$$
+&nbsp;
 
+所以看到，Hamilton在旋转向量的时候，一共有两个缺点：
+
+1. 在对向量进行旋转的时候，数值意义上与自然意义上完全不相同；
+2. 在连续旋转时，无法保持homomorphy；
+
+其实以上问题，如果在用四元数的时候一直记得它是被动旋转，所以映射到旋转矩阵时映射为转置，那么一切都是对的，即参考2中提倡的映射方式：
+$$
+\mathbf{C_H}(_{G}^{b}\mathbf{q}) \sim \mathbf{R}_{b}^{G}  \tag{15}
+$$
+注意这里就不表示对于坐标系的旋转了，所以直接把字母放在了旋转矩阵R后面；
+
+&nbsp;
+
+### Shuster四元数表示法
+
+Shuster四元数的表示法为了解决上述意义与数值不同的缺点用的方法比较巧妙，通过改变四元数的虚数运算法则达到了数学上的一致性：
+$$
+\begin{cases}
+i^2=j^2=k^2=-1 \\
+-i j=j i=k \\
+-j k=k j=i \\ 
+-k i=i k=j
+\end{cases} \tag{16}
+$$
+同时为了与Hamilton四元数区分开，Shuster将四元数的运算做了如下改变：
+
+1. 将四元数的组织方式也变化了一下：
+
+$$
+\mathbf{q}=[\mathbf{q_v}, \mathrm{q_w}] \tag{17}
+$$
+
+2. 表示四元数乘法的符号从原先的$\odot$变作了$\otimes$；
+
+如果用公式（16）定义的虚部乘法法则来计算四元数的乘法的话，则有：
+$$
+
+$$
