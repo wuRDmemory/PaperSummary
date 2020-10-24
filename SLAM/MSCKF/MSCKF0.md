@@ -122,9 +122,59 @@ i j=-j i=k \\
 $$
 这里对四元数的其他的数学性质就不做过多赘述，感兴趣的可以到参考3和参考4中看。
 
+对于两个四元数的相乘，应用虚部乘法法则之后有：
+$$
+\begin{aligned}
+\begin{array}{l}
+\bar{q} \odot \bar{p}&=\left[\begin{array}{cccc}
+q_{w} & -q_{x} & -q_{y} & -q_{z} \\
+q_{x} & q_{w} & -q_{z} & q_{y} \\
+q_{y} & q_{z} & q_{w} & -q_{x} \\
+q_{z} & -q_{y} & q_{x} & q_{w}
+\end{array}\right]\left[\begin{array}{c}
+p_{x} \\
+p_{y} \\
+p_{z} \\
+p_{w}
+\end{array}\right] \\
+&=\left[\begin{array}{cc}
+\mathrm{q_w} & -\mathbf{q}^T \\
+\mathbf{q} & q_{w} \mathbf{I}_{3 \times 3}+\lfloor\mathbf{q} \times\rfloor
+\end{array}\right]\left[\begin{array}{c}
+\mathbf{p} \\
+p_{w}
+\end{array}\right] \\
+&=\mathcal{L}(\overline{q})\overline{p}
+\end{array} \\
+
+\begin{array}{l}
+\bar{q} \odot \bar{p}&=\left[\begin{array}{cccc}
+p_{w} & -p_{x} & -p_{y} & -p_{z} \\
+p_{x} & p_{w} & p_{z} & -p_{y} \\
+p_{y} & -p_{z} & p_{w} & p_{x} \\
+p_{z} & p_{y} & -p_{x} & p_{w}
+\end{array}\right]\left[\begin{array}{c}
+q_{x} \\
+q_{y} \\
+q_{z} \\
+q_{w}
+\end{array}\right] \\
+&=\left[\begin{array}{cc}
+\mathrm{p_w} & -\mathbf{p}^T \\
+\mathbf{p} & p_{w} \mathbf{I}_{3 \times 3}+\lfloor\mathbf{p} \times\rfloor
+\end{array}\right]\left[\begin{array}{c}
+\mathbf{q} \\
+q_{w}
+\end{array}\right] \\
+&=\mathcal{R}(\overline{p})\overline{q}
+\end{array}
+\end{aligned} \tag{9}
+$$
+
+
 Hamilton提出四元数其实是铁站边**被动旋转**的，也就是说四元数其实表示的是对于坐标系的旋转。有如下的公式：
 $$
-\mathcal{X}_{B}=\mathbf{q}\odot \mathcal{X}_{A} \odot \mathbf{q^{-1}} \tag{9}
+\mathcal{X}_{B}=\mathbf{q}\odot \mathcal{X}_{A} \odot \mathbf{q^{-1}} \tag{10}
 $$
 其中$\mathcal{X}_{A}$和$\mathcal{X}_{B}$表示坐标系{A}和坐标系{B}。
 
@@ -133,19 +183,20 @@ $$
 \begin{aligned}
 \mathcal{X}_{B} &= \mathbf{_{A}^{B}q}\odot \mathcal{X}_{A} \odot \mathbf{_{A}^{B}q^{-1}} \\
 &=[\mathbf{q^{-1}}]_{R}[\mathbf{q}]_{L} \mathcal{X}_{A} \\
+&=(\left(2 q_{w}^{2}-1\right) \mathbf{I}_{3 \times 3}+2 q_{w}\lfloor\mathbf{q} \times\rfloor+2 \mathbf{q} \mathbf{q}^{\mathrm{T}})\mathcal{X}_A \\
 &=\left[\begin{array}{ccc}
 q_{w}^{2}+q_{x}^{2}-q_{y}^{2}-q_{z}^{2} & 2\left(q_{x} q_{y}-q_{w} q_{z}\right) & 2\left(q_{x} q_{z}+q_{w} q_{y}\right) \\
 2\left(q_{x} q_{y}+q_{w} q_{z}\right) & q_{w}^{2}-q_{x}^{2}+q_{y}^{2}-q_{z}^{2} & 2\left(q_{y} q_{z}-q_{w} q_{x}\right) \\
 2\left(q_{x} q_{z}-q_{w} q_{y}\right) & 2\left(q_{y} q_{z}+q_{w} q_{x}\right) & q_{w}^{2}-q_{x}^{2}-q_{y}^{2}+q_{z}^{2}
 \end{array}\right]\mathcal{X}_{A} \\
 &=\mathbf{_{A}^{B}R}\mathcal{X}_{A}
-\end{aligned}   \tag{10}
+\end{aligned}   \tag{11}
 $$
-这里可以把上面关于旋转的例子带入进来，即旋转轴在{R}系，旋转角为45°，对应四元数为$[\mathrm{cos}(\frac{\theta}{2}), 0, 0, \mathrm{sin}(\frac{\theta}{2})]$，则公式（10）描述的旋转刚好就是对于坐标系的旋转。
+这里可以把上面关于旋转的例子带入进来，即旋转轴在{R}系，旋转角为45°，对应四元数为$[\mathrm{cos}(\frac{\theta}{2}), 0, 0, \mathrm{sin}(\frac{\theta}{2})]$，则公式（11）描述的旋转刚好就是对于坐标系的旋转。
 
 于是对于Hamilton四元数而言，与旋转向量的映射关系如下：
 $$
-\mathbf{C_s}(_{G}^{b}\mathbf{q}) \sim {}_{G}^{b}\mathbf{R}(\mathbf{R}_{G}^{b})  \tag{11}
+\mathbf{C_s}(_{G}^{b}\mathbf{q}) \sim {}_{G}^{b}\mathbf{R}(\mathbf{R}_{G}^{b})  \tag{12}
 $$
 > Attention:
 >
@@ -158,7 +209,7 @@ $$
 
 Hamilton表示法对于天生就是运用于位姿表示的表示法，但是对于旋转一个向量或者点的话却极其不友好（但是并不是不对！），具体而言：对于一个在{b}系的向量，如果希望把它用四元数转到{G}系的话，则需要使用$\mathbf{_{G}^{b}q}$表示的被动旋转来旋转，这样的**自然意义**是想把这个向量由{b}转到{G}的方向旋转的，有：
 $$
-\mathbf{v^G}=\mathbf{_{G}^{b}q} \odot \mathbf{v^b} \odot \mathbf{_{G}^{b}q^{-1}} = \mathbf{_{G}^{b}R}\mathbf{v^b} \cong \mathbf{R}_{b}^{G}\mathbf{v^b}  \tag{12}
+\mathbf{v^G}=\mathbf{_{G}^{b}q} \odot \mathbf{v^b} \odot \mathbf{_{G}^{b}q^{-1}} = \mathbf{_{G}^{b}R}\mathbf{v^b} \cong \mathbf{R}_{b}^{G}\mathbf{v^b}  \tag{13}
 $$
 这里的$\cong$表示期望相等。**因为本质上四元数表示的旋转是对于坐标系的旋转，如果应用于向量，则旋转矩阵应该是${}_{G}^{b}\mathbf{R}$的逆才对**！如果硬生生的用四元数表示对于向量的**主动旋转**，那么相同的旋转向量则会像上述的主动旋转中的公式（4）一样，与被动旋转对应的主动旋转公式（1）意义和数值上都会相差甚远。
 
@@ -166,20 +217,20 @@ $$
 
 同时，如果表示连续的坐标旋转的话，Hamilton表示法的四元数还会出现anti-homomorphy的情况，具体而言：假设另有坐标系{I}，如果希望把{G}系的向量用四元数转到{I}系的话，则需要用四元数$\mathbf{_{I}^{G}q}$对{G}系下的向量进行旋转，则有：
 $$
-\mathbf{v^I}=\mathbf{_{I}^{G}q} \odot \mathbf{v^G} \odot \mathbf{_{I}^{G}q^{-1}} = {}_{I}^{G}\mathbf{R}\mathbf{v^G} \cong \mathbf{R}_{G}^{I}\mathbf{v^G}  \tag{13}
+\mathbf{v^I}=\mathbf{_{I}^{G}q} \odot \mathbf{v^G} \odot \mathbf{_{I}^{G}q^{-1}} = {}_{I}^{G}\mathbf{R}\mathbf{v^G} \cong \mathbf{R}_{G}^{I}\mathbf{v^G}  \tag{14}
 $$
- 联合公式（12）和（13），四元数想表示的旋转规则如下：
+ 联合公式（13）和（14），四元数想表示的旋转规则如下：
 $$
 \begin{aligned}
 \mathbf{v^I}&=\mathbf{_{I}^{G}q} \odot \mathbf{_{G}^{b}q} \odot \mathbf{v^b} \odot \mathbf{_{G}^{b}q^{-1}} \odot \mathbf{_{I}^{G}q^{-1}}  \\
 &=(\mathbf{_{I}^{G}q} \odot \mathbf{_{G}^{b}q}) \odot \mathbf{v^{b}} \odot (\mathbf{_{I}^{G}q} \odot \mathbf{_{G}^{b}q})^{-1} \\
 &=\mathbf{_{I}^{b}q} \odot \mathbf{v^{b}} \odot \mathbf{_{I}^{b}q}^{-1}
-\end{aligned} \tag{14}
+\end{aligned} \tag{15A}
 $$
 
 然而，如果使用四元数与旋转矩阵映射关系公式（12）的话，那么公式（14）的连续旋转则变作：
 $$
-\mathbf{C_s}(\mathbf{_{I}^{G}q} \odot \mathbf{_{G}^{b}q})=\mathbf{C_s}(\mathbf{_{I}^{G}q})\mathbf{C_s}(\mathbf{_{G}^{b}q})=\mathbf{R}_{I}^{G}\mathbf{R}_{G}^{b} \not\equiv \mathbf{R}_{b}^{I}
+\mathbf{C_s}(\mathbf{_{I}^{G}q} \odot \mathbf{_{G}^{b}q})=\mathbf{C_s}(\mathbf{_{I}^{G}q})\mathbf{C_s}(\mathbf{_{G}^{b}q})=\mathbf{R}_{I}^{G}\mathbf{R}_{G}^{b} \not\equiv \mathbf{R}_{b}^{I}  \tag{15B}
 $$
 &nbsp;
 
@@ -190,7 +241,7 @@ $$
 
 其实以上问题，如果在用四元数的时候一直记得它是被动旋转，所以映射到旋转矩阵时映射为转置，那么一切都是对的，即参考2中提倡的映射方式：
 $$
-\mathbf{C_H}(_{G}^{b}\mathbf{q}) \sim \mathbf{R}_{b}^{G}  \tag{15}
+\mathbf{C_H}(_{G}^{b}\mathbf{q}) \sim \mathbf{R}_{b}^{G}  \tag{16}
 $$
 注意这里就不表示对于坐标系的旋转了，所以直接把字母放在了旋转矩阵R后面；
 
@@ -205,19 +256,109 @@ i^2=j^2=k^2=-1 \\
 -i j=j i=k \\
 -j k=k j=i \\ 
 -k i=i k=j
-\end{cases} \tag{16}
+\end{cases} \tag{17}
 $$
 同时为了与Hamilton四元数区分开，Shuster将四元数的运算做了如下改变：
 
 1. 将四元数的组织方式也变化了一下：
 
 $$
-\mathbf{q}=[\mathbf{q_v}, \mathrm{q_w}] \tag{17}
+\mathbf{q}=[\mathbf{q_v}, \mathrm{q_w}] \tag{18}
 $$
 
 2. 表示四元数乘法的符号从原先的$\odot$变作了$\otimes$；
 
-如果用公式（16）定义的虚部乘法法则来计算四元数的乘法的话，则有：
+如果用公式（17）定义的虚部乘法法则来计算四元数的乘法的话，则有：
+$$
+\begin{aligned}
+\begin{array}{l}
+\bar{q} \otimes \bar{p}&=\left[\begin{array}{cccc}
+q_{w} & q_{z} & -q_{y} & q_{x} \\
+-q_{z} & q_{w} & q_{x} & q_{y} \\
+q_{y} & -q_{x} & q_{w} & q_{z} \\
+-q_{x} & -q_{y} & -q_{z} & q_{w}
+\end{array}\right]\left[\begin{array}{c}
+p_{x} \\
+p_{y} \\
+p_{z} \\
+p_{w}
+\end{array}\right] \\
+&=\left[\begin{array}{cc}
+q_{w} \mathbf{I}_{3 \times 3}-\lfloor\mathbf{q} \times\rfloor & \mathbf{q} \\
+-\mathbf{q}^{\mathrm{T}} & q_{w}
+\end{array}\right]\left[\begin{array}{c}
+\mathbf{p} \\
+p_{w}
+\end{array}\right] \\
+&=\mathcal{L}(\overline{q})\overline{p}
+\end{array} \\
+
+\begin{array}{l}
+\bar{q} \otimes \bar{p}&=\left[\begin{array}{cccc}
+p_{w} & -p_{z} & p_{y} & p_{x} \\
+p_{z} & p_{w} & -p_{x} & p_{y} \\
+-p_{y} & p_{x} & p_{w} & p_{z} \\
+-p_{x} & -p_{y} & -p_{z} & p_{w}
+\end{array}\right]\left[\begin{array}{c}
+q_{x} \\
+q_{y} \\
+q_{z} \\
+q_{w}
+\end{array}\right] \\
+&=\left[\begin{array}{cc}
+p_{w} \mathbf{I}_{3 \times 3}+\lfloor\mathbf{p} \times\rfloor & \mathbf{p} \\
+-\mathbf{p}^{\mathrm{T}} & p_{w}
+\end{array}\right]\left[\begin{array}{c}
+\mathbf{q} \\
+q_{w}
+\end{array}\right] \\
+&=\mathcal{R}(\overline{p})\overline{q}
+\end{array}
+\end{aligned}  \tag{19}
 $$
 
+对比公式（9）和公式（19），可以发现一个有趣的事情：
 $$
+\bar{q} \odot \bar{p} = \mathcal{L_{HN}}(\overline{q})\overline{p}=\mathcal{R_{SH}}(\overline{q})\overline{p}=\bar{p} \otimes \bar{q}  \tag{20}
+$$
+于是我们看到，调整了虚部乘法之后，四元数的乘法被flip了！
+
+
+
+同时我们再来看看经过虚数乘法变化之后，四元数对向量的旋转公式变成了什么样：
+$$
+\begin{aligned}
+\mathbf{X}_{B} &= \mathbf{_{B}^{A}q}\otimes \mathbf{X}_{A} \otimes \mathbf{_{B}^{A}q^{-1}} \\
+&=[\mathbf{q^{-1}}]_{R}[\mathbf{q}]_{L} \mathbf{X}_{A} \\
+&=(\left(2 q_{w}^{2}-1\right) \mathbf{I}_{3 \times 3}-2 q_{w}\lfloor\mathbf{q} \times\rfloor+2 \mathbf{q} \mathbf{q}^{\mathrm{T}})\mathbf{X}_A \\
+&=\left[\begin{array}{ccc}
+q_{w}^{2}+q_{x}^{2}-q_{y}^{2}-q_{z}^{2} & 2\left(q_{x} q_{y}+q_{w} q_{z}\right) & 2\left(q_{x} q_{z}-q_{w} q_{y}\right) \\
+2\left(q_{x} q_{y}-q_{w} q_{z}\right) & q_{w}^{2}-q_{x}^{2}+q_{y}^{2}-q_{z}^{2} & 2\left(q_{y} q_{z}+q_{w} q_{x}\right) \\
+2\left(q_{x} q_{z}+q_{w} q_{y}\right) & 2\left(q_{y} q_{z}-q_{w} q_{x}\right) & q_{w}^{2}-q_{x}^{2}-q_{y}^{2}+q_{z}^{2}
+\end{array}\right]\mathbf{X}_{A} \\
+&=\mathbf{R_{A}^{B}}\mathbf{X}_{A}
+\end{aligned}   \tag{21}
+$$
+对比公式（21）和公式（11）：
+
+1. 两个四元数均表示被动旋转意义，不过一个是对坐标系的主动旋转，一个是对向量的主动旋转；
+2. 在公式（11）中，向量均为坐标系的基底，用花体表示；而在公式（21）中，向量都是坐标系中的一个向量，用大写粗体表示；
+3. 在公式（11）中和公式（21）中，他们的旋转矩阵刚好互为转置，也就是说在Shuster的表示方法中，一个表示被动旋转的四元数通过乘法运算法则得到的是在被动旋转意义下的旋转矩阵；
+
+&nbsp;
+
+### Shuster表示法是如何解决Hamilton的缺陷的
+
+公式（21）其实解决了公式（14）的问题，即在数学运算意义下，整个数值推导与期望表示的意义等价；
+
+而对于连续**主动旋转**一个向量的antihomography的解决（公式（15A）和（15B）），其实一个方案给出了两个不同角度的解决思路；
+
+1. 因为公式（20）的存在，导致四元数乘法的flip操作，有：
+   $$
+   \mathbf{C_s}(\mathbf{{}_{I}^{b}q})=\underbrace{\mathbf{C_s}(\mathbf{_{I}^{G}q} \otimes \mathbf{_{G}^{b}q})}_{JPL-conversion}=\underbrace{\mathbf{C_s}(\mathbf{_{G}^{b}q} \odot \mathbf{_{I}^{G}q})=\mathbf{C_s}(\mathbf{_{G}^{b}q})\mathbf{C_s}(\mathbf{_{I}^{G}q})=\mathbf{R}_{G}^{b}\mathbf{R}_{I}^{G} \equiv \mathbf{R}_{I}^{b}}_{HN-conversion} \tag{22}
+   $$
+   笔者把在什么部分用什么conversion表明了出来；
+
+2. 因为公式（21）的存在，导致四元数到旋转矩阵的映射发生了变化，有：
+
+   
