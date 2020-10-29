@@ -1,4 +1,12 @@
-# MSCKF笔记——预测部分
+# MSCKF（二）——预测部分
+
+----
+
+[toc]
+
+&nbsp;
+
+----
 
 ## Reference
 
@@ -7,6 +15,7 @@
 3. Robust Stereo Visual Inertial Odometry for Fast Autonomous Flight. S-MSCKF对应的论文；
 4. https://github.com/KumarRobotics/msckf_vio S-MSCKF的工程；
 5. https://zhuanlan.zhihu.com/p/76341809 知乎上大佬对MSCKF的总结，本文没有过多的程序方面的讲解，都是从理论上推导的，也是个人的一些解惑过程；
+6. https://blog.csdn.net/wubaobao1993/article/details/109297640  笔者写的关于两种四元数的表示；
 
 > PS: MSCKF的工程算是我见过最贴近论文的工程了，基本上工程中的数学部分在论文里面都给了出来，所以对于MSCKF1.0来说，论文是一定要弄懂的。本篇将参考[1]和参考[3]放在一起进行梳理，因为两者确实很相似，不过在参考[3]中作者对能观性进行了一定程度的补偿。
 
@@ -24,7 +33,7 @@
 
 ### 位姿表示方式
 
-关于位姿的表示了，在大多数的SLAM系统中，位姿表示一般为$T=\{R^{G}_{I}|t^{G}_{I}\}$，但是MSCKF(或者大部分的EKF-base的VO/VIO系统)中的位姿表示变为了$T=\{R^{I}_{G}|p^{G}_{I}\}$，论文中都表示为$T=\{^{I}_{G}q| ^{G}p_{I}\}$，然后**其中最关键的一点是：四元数的表示方法使用的不是传统的Hamilton表示方法，而是JPL表示方法**，这两种表示方法的区别和联系可以看参考[[2]](https://arxiv.org/abs/1711.02508)，简单的说就是大佬们为了四元数乘法的一致性，自己又搞了一个表示方法出来，借用参考[2]中的区别图如下：
+关于位姿的表示了，在大多数的SLAM系统中，位姿表示一般为$T=\{R^{G}_{I}|t^{G}_{I}\}$，但是MSCKF(或者大部分的EKF-base的VO/VIO系统)中的位姿表示变为了$T=\{R^{I}_{G}|p^{G}_{I}\}$，论文中都表示为$T=\{^{I}_{G}q| ^{G}p_{I}\}$，然后**其中最关键的一点是：四元数的表示方法使用的不是传统的Hamilton表示方法，而是JPL表示方法**，这两种表示方法的区别和联系可以看参考[[2]](https://arxiv.org/abs/1711.02508)或者笔者之前写的参考[[2]](https://blog.csdn.net/wubaobao1993/article/details/109297640)，简单的说就是大佬们为了四元数乘法的一致性，自己又搞了一个表示方法出来，借用参考[2]中的区别图如下：
 
 <img src="pictures/MSCKF1_1.png"/>
 
@@ -51,9 +60,15 @@ $$
       $$
       \mathrm{R}(\mathbf{\delta{q}}) \approx \mathrm{R}(\left[1, \frac{1}{2}\mathrm{\delta{\theta}}\right])=\mathrm{I_{3x3}}-[\delta{\theta}]_{\times}
       $$
-      
 
----
+- 四元数参数的摄动坐标系的选择：
+  
+  - 在Hamilton表示法中，因为旋转是PBTW的，所以扰动量为$\delta{\theta}_{L'}^{L}$，参考系为{L}；
+  - 在JPL表示法中，因为旋转是PWTB的，所以扰动量为${}_{L}^{L'}\delta{\theta}$，参考系也为{L}；
+
+
+
+----
 
 ### IMU状态变量的表示方式
 
@@ -79,6 +94,8 @@ $$
 - 对于旋转的误差向量$\delta{\theta}$来说，我们通常认为其表示绕一个轴向旋转一个角度，这个轴向其实是有参考系的，一般情况下，**算法求解的旋转向量的参考系均为估计的机体坐标系（也可以说是摄动坐标系）**，即$\mathbf{\hat{L}}$或者$\mathbf{\hat{I}}$，而公式（2）中没有实际的体现出来，误差旋转向量前的字母完全是为了区别开IMU位姿和IMU与Camera外参；
 - 对于非旋转的误差向量来说，他们均是在世界坐标系下表示的，所以前面的字母{G}、{I}和{C}均是有意义的，表示它的参考坐标系；
 - 公式（2）中的IMU和Camera的相机外参中旋转的定义方向是不同的（实际上，如果按照参考3中的定义，那么它后面AppendixB中的Jacobian是不对的，且S-MSCKF的工程中，它的变量也是用IMU到Camera的旋转方向表示的）；
+
+&nbsp;
 
 ---
 
@@ -387,13 +404,7 @@ $$
 2. 由IMU的运动方程可以对Normal-State进行积分；
 3. 由Error-State的微分方程可以推导得到状态转移方程的闭式解，进而构成了整个Kalman Filter的预测部分；
 
-&nbsp;
 
------
 
-## Appendix A
 
-这部分重点说一下JPL四元数的一些理解。https://mathworld.wolfram.com/RotationMatrix.html
-
-### 为什么有JPL的表示方法？
 
