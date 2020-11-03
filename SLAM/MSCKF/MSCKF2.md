@@ -167,3 +167,45 @@ $$
    $$
    
 
+&nbsp;
+
+### 对于观测方程的进一步简化
+
+如公式（12）所示，对于一个特征点而言，该公式的计算维度为$（2\mathrm{N}^{(j)}-3）$，那么对于所有的点而言，该问题的维度为$d=\sum (2\mathrm{N}^{(j)}-3)$。
+
+**特别的，如果该维度大于估计变量（error-state）的维度时**，多出来的维度的优化显得没有必要，所以，当$\mathbf{H_o}$的行数大于列数的时候，作者引入了QR分解来帮助进行优化问题的再简化：
+$$
+\mathbf{H_o}=\left[Q_1, Q_2\right]\begin{bmatrix}\mathbf{T_H} \\ 0\end{bmatrix} \tag{14}
+$$
+因为Q矩阵是酉矩阵，所以对于公式（12），可以变为：
+$$
+\begin{aligned}
+\begin{bmatrix}Q_1^T \mathbf{r_o^{(j)}} \\Q_2^T \mathbf{r_o^{(j)}} \end{bmatrix} &= \begin{bmatrix}\mathbf{T_H^{(j)}} \\ 0\end{bmatrix}\widetilde{\mathbf{X}}+\begin{bmatrix}Q_1^T \mathbf{n_o^{(j)}} \\Q_2^T \mathbf{n_o^{(j)}} \end{bmatrix} \\
+\Rightarrow \mathbf{r_n^{(j)}} &= \mathbf{T_H^{(j)}}\widetilde{\mathbf{X}}+\mathbf{n_n^{(j)}}
+\end{aligned}
+\tag{15}
+$$
+其中：
+
+1. $\mathbf{T_H}$的维度为$(\mathrm{6M+21}) \times (\mathrm{6M+21})$，M为滑动窗口中的相机位姿数目；
+
+2. 对于噪声部分，依旧引用公式（13），依旧可以看到：
+   $$
+   E\left\{\mathbf{n}_{n}^{(j)} \mathbf{n}_{n}^{(j) T}\right\}=\sigma_{\mathrm{im}}^{2} \mathbf{Q}^{T} \mathbf{Q}=\sigma_{\mathrm{im}}^{2} \mathbf{I}_{6 M+21} \tag{16}
+   $$
+   
+
+&nbsp;
+
+### 更新方程
+
+有了公式（15）所示的观测方程之后，其实就可以套入KF的更新方程了：
+$$
+\begin{cases}
+\mathbf{K}=\mathbf{PT_{H}^{T}(T_{H}PT_{H}^{T}+R_{n})}^{-1} \\
+\mathbf{\Delta{X}}=\mathbf{K}\mathbf{r_n} \\
+\mathbf{P}_{k+1|k+1}=(\mathbf{I-KT_H})\mathbf{P}_{k+1|k}(\mathbf{I-KT_H})^{T}+\mathbf{KR_nK^T}
+\end{cases}  \tag{17}
+$$
+可以看到，基本上符合整个KF的更新过程，但是第二个公式似乎稍微不同，这里也讲一下个人的理解，首先祭出传统的KF的更新方程：
+
