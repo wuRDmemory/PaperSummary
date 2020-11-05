@@ -238,3 +238,54 @@ $$
 直到...笔者将S-MSCKF中的对应的H矩阵以及error-state的更新量打印出来才发现，事情并没有那么简单：其实在删除跟踪丢失的关键点的时候，IMU的参数部分也会变化。但是H矩阵符合预期，在最新帧的部分全为0。
 
 实际上对于MSCKF（或者说对于KF这样的方法）而言，真正链接IMU和之前的状态的因素除了观测的约束，还有一个部分就是协方差。
+
+> 这里简单的记录一下个人的理解：为了方便理解，这里直接用Kalman filter的bayes推导方法
+>
+> 假设在k时刻有了新的输入值$\mathrm{v}_k$和新的观测值$\mathrm{y}_k$；
+>
+> 于是k时刻的状态变量的预测值为：
+> $$
+> p\left(\mathbf{x}_{k} \mid \check{\mathbf{x}}_{0}, \mathbf{v}_{1: k}, \mathbf{y}_{0: k-1}\right)=\mathcal{N}\left(\check{\mathbf{x}}_{k}, \check{\mathbf{P}}_{k}\right) \tag{20}
+> $$
+> 其中：
+> $$
+> \begin{cases}
+> \begin{aligned}
+> \check{\mathbf{P}}_{k} &=\mathbf{A}_{k-1} \hat{\mathbf{P}}_{k-1} \mathbf{A}_{k-1}^{T}+\mathbf{Q}_{k} \\
+> \check{\mathbf{x}}_{k} &=\mathbf{A}_{k-1} \hat{\mathbf{x}}_{k-1}+\mathbf{v}_{k}
+> \end{aligned}
+> \end{cases} \tag{21}
+> $$
+> 对于k时刻的观测值$\mathrm{y}_k$，给出其与状态变量的联合概率分布：
+> $$
+> \begin{aligned}
+> p\left(\mathbf{x}_{k}, \mathbf{y}_{k} \mid \check{\mathbf{x}}_{0}, \mathbf{v}_{1: k}, \mathbf{y}_{0: k-1}\right) &=\mathcal{N}\left(\left[\begin{array}{c}
+> \boldsymbol{\mu}_{x} \\
+> \boldsymbol{\mu}_{y}
+> \end{array}\right],\left[\begin{array}{cc}
+> \boldsymbol{\Sigma}_{x x} & \boldsymbol{\Sigma}_{x y} \\
+> \boldsymbol{\Sigma}_{y x} & \boldsymbol{\Sigma}_{y y}
+> \end{array}\right]\right) \\
+> &=\mathcal{N}\left(\left[\begin{array}{c}
+> \check{\mathbf{x}}_{k} \\
+> \mathbf{C}_{k} \check{\mathbf{x}}_{k}
+> \end{array}\right],\left[\begin{array}{cc}
+> \tilde{\mathbf{P}}_{k} & \check{\mathbf{P}}_{k} \mathbf{C}_{k}^{T} \\
+> \mathbf{C}_{k} \mathbf{P}_{k} & \mathbf{C}_{k} \mathbf{P}_{k} \mathbf{C}_{k}^{T}+\mathbf{R}_{k}
+> \end{array}\right]\right)
+> \end{aligned}  \tag{22}
+> $$
+> 对公式（22）所表示的概率对观测进行边缘化得到：
+> $$
+> p(\mathrm{x}_k|\check{\mathrm{x}}_0,\mathbf{v}_{1: k}, \mathbf{y}_{0: k})=\mathcal{N}(\underbrace{\boldsymbol{\mu}_{x}+\mathbf{\Sigma}_{x y} \boldsymbol{\Sigma}_{y y}^{-1}\left(\mathbf{y}_{k}-\boldsymbol{\mu}_{y}\right)}_{\hat{\mathbf{x}}_{k}},  \underbrace{\boldsymbol{\Sigma}_{x x}-\boldsymbol{\Sigma}_{x y} \boldsymbol{\Sigma}_{y y}^{-1} \boldsymbol{\Sigma}_{y x}}_{\hat{\mathbf{P}}_{k}})  \tag{23}
+> $$
+> 公式（23）中的$\Sigma_{xy}\Sigma_{yy}^{-1}$对应的就是KF中的增益矩阵K。
+>
+> 可以看到，联合概率分布中，观测与状态变量的协方差$\Sigma_{xy}$既与观测矩阵C有关，同时也与协方差矩阵P有关。
+>
+> **对于MSCKF框架而言，在滑动窗口中的相机位姿与IMU参数的协方差其实一直都不为0，理论上来说，每一帧相机位姿其实都来源于IMU，所以两者之间必然是联系起来的**。
+
+&nbsp;
+
+-----
+
