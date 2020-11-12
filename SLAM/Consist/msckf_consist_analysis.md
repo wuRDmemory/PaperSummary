@@ -176,3 +176,8 @@ $$
 $$
 {}^{I_{l+1}}_{G}\tilde{\mathrm{x}}^{(l)}= \Phi(\mathrm{x}_{I_{l+1}}^{(l)}, \mathrm{x}_{I_l}^{(l)})^{(l)} {}^{I_{l}}_{G}\tilde{\mathrm{x}}^{(l)}+\mathrm{w}^{(l)} \tag{14}
 $$
+
+&nbsp;
+
+---
+
