@@ -187,7 +187,42 @@ $$
 
 ## MSCKF的观测模型
 
+下面的所有的下角标 $l$ 表示id为 $l$ 的相机，不表示时间，这里暂时不涉及时间，可以认为是理想的观测模型。
+
 为了分析能观性，这里还需要一个步骤就是观测模型，以单个观测点$P_{f_j}$为例，其观测模型为：
 $$
-
+\begin{aligned}
+z_l&=\pi({}^{C_l}\mathrm{p}_{f_j})+n_{l} \\
+{}^{C_l}\mathrm{p}_{f_j}&={}^{C}_{I}R {}^{G}_{l}R({}^{G}\mathrm{p}_{f_j}-{}^{G}\mathrm{p}_{I_l})+{}^{C}\mathrm{p}_I 
+\end{aligned} \tag{15}
 $$
+
+所以观测模型为：
+$$
+\begin{aligned}
+H_{(I_l|l)}&=J_{(f_j|l)} \quad {}^{C}_{I}R \quad {}_{G}^{I_l}R\begin{bmatrix} \underbrace{\left[{}^{G}\mathrm{p}_{f_j}-{}^{G}\mathrm{p}_{I_i}\right]_{\times}({}_{G}^{I_l}R)^{T}}_{{\partial e}/{\partial \theta}} & \underbrace{ -\mathbf{I}_{3\times3}}_{{\partial e}/{\partial \mathrm{p}}} & \underbrace{ \mathbf{0}_{3\times3}}_{{\partial e}/{\partial \mathrm{v}}}\end{bmatrix} \\ 
+H_{(f_j|l)}&=J_{(f_j|l)} \quad {}^{C}_{I}R \quad {}_{G}^{I_l}R
+\end{aligned} \tag{16}
+$$
+其中：
+$$
+J_{(f_j|l)}=\frac{1}{Z}\begin{bmatrix}1 & 0 & -\frac{X}{Z} \\ 0 & 1 & -\frac{Y}{Z} \end{bmatrix}
+$$
+&nbsp;
+
+----
+
+## 能观性分析
+
+能观性的分析主要依赖于能观性矩阵：
+$$
+\mathcal{O}=\begin{bmatrix} \mathrm{H}_k \\ \mathrm{H}_{k+1}\Phi_{k} \\ \vdots \\ \mathrm{H}_{k+m}\Phi_{k+m-1} \dots\Phi_{k} \end{bmatrix} \tag{17}
+$$
+&nbsp;
+
+------
+
+## 理想情况下的能观性矩阵
+
+这里先进行理想情况下的能观性矩阵的推导，这个部分的所有变量均使用理想情况下的状态值（公式上来讲就是$\mathbf{X}_{I_l}^{(l-1)}=\mathbf{X}_{I_l}^{(l)}=\dots=\mathbf{X}_{I_l}^{l+m}$），也就是状态变量从预测出来的时候，就是真值了，后面一直都不变了（提前剧透了FEJ  -.-!!!，不过还是稍有不同，后面会解释）。
+
