@@ -159,8 +159,8 @@ $$
 \end{bmatrix} = 
 \begin{bmatrix} 
 {}^{I_{l+1}}_{I_{l}}R^{(l)} & \mathbf{0} & \mathbf{0} \\
--({}^{I_l}_{G}R)^{T}\left[\hat{\mathrm{y}}^{(l)}\right] & \mathbf{I} & \mathbf{I}\Delta{t} \\
--({}^{I_l}_{G}R)^{T}\left[\hat{\mathrm{s}}^{(l)}\right] & \mathbf{0} & \mathbf{I}
+-({}^{I_l}_{G}R^{(l)})^{T}\left[\hat{\mathrm{y}}^{(l)}_{l}\right]_{\times} & \mathbf{I} & \mathbf{I}\Delta{t} \\
+-({}^{I_l}_{G}R^{(l)})^{T}\left[\hat{\mathrm{s}}^{(l)}_{l}\right]_{\times} & \mathbf{0} & \mathbf{I}
 \end{bmatrix}
 \begin{bmatrix}
 {}^{I_{l}}_{G}\tilde{\theta}^{(l)} \\
@@ -170,8 +170,8 @@ $$
 +
 \begin{bmatrix}
 {}^{I_{l+1}}_{I_{l}}\tilde{\theta}^{(l)} \\
-({}^{I_l}_{G}R)^{T}\left[\tilde{\mathrm{y}}^{(l)}\right] \\
-({}^{I_l}_{G}R)^{T}\left[\tilde{\mathrm{s}}^{(l)}\right]
+({}^{I_l}_{G}R^{(l)})^{T}\left[\tilde{\mathrm{y}}^{(l)}_{l}\right] \\
+({}^{I_l}_{G}R^{(l)})^{T}\left[\tilde{\mathrm{s}}^{(l)}_{l}\right]
 \end{bmatrix} \tag{13}
 $$
 上式可以写作状态转移方程为：
@@ -225,4 +225,121 @@ $$
 ## 理想情况下的能观性矩阵
 
 这里先进行理想情况下的能观性矩阵的推导，这个部分的所有变量均使用理想情况下的状态值（公式上来讲就是$\mathbf{X}_{I_l}^{(l-1)}=\mathbf{X}_{I_l}^{(l)}=\dots=\mathbf{X}_{I_l}^{l+m}$），也就是状态变量从预测出来的时候，就是真值了，后面一直都不变了（提前剧透了FEJ  -.-!!!，不过还是稍有不同，后面会解释）。
+
+于是将公式（13）表示的状态转移矩阵与公式（16）表示的观测矩阵带入公式（17）就可以得到能观性矩阵，这里以 $l$ 时刻为例，有：
+$$
+\mathcal{O}_{l}=\mathrm{H}_{l}\Phi_{l-1}\Phi_{l-2}\dots\Phi_{k} \tag{18}
+$$
+这里整个推导十分麻烦，但是好在只要计算前两次乘法我们就能找到规律，下面分别对两次乘法进行展开：
+$$
+\begin{aligned}
+\mathrm{H}_{l}\Phi_{l-1}&=J_{(f_j|l)} \quad {}^{C}_{I}R \quad {}_{G}^{I_l}R
+\left\{\underbrace{\begin{bmatrix} \left[{}^{G}\mathrm{p}_{f_j}-{}^{G}\mathrm{p}_{I_l}\right]_{\times}({}_{G}^{I_l}R)^{T} & -\mathbf{I}_{3\times3} & \mathbf{0}_{3\times3}\end{bmatrix}\Phi_{l-1}}_{S0} \quad \dots \quad \mathbf{I} \quad \dots \quad \mathbf{0} \right\}
+\end{aligned} \tag{19}
+$$
+可以看到，整个乘积的结果其实更加依赖的是IMU的观测部分与状态转移矩阵的乘积部分，也就是上式中的S0部分，下面单独展开：
+$$
+\begin{aligned}
+S0&=
+\begin{bmatrix} 
+\left[{}^{G}\mathrm{p}_{f_j}-{}^{G}\mathrm{p}_{I_l}\right]_{\times}({}_{G}^{I_l}R)^{T} & -\mathbf{I}_{3\times3} & \mathbf{0}_{3\times3}
+\end{bmatrix}
+\begin{bmatrix} 
+{}^{I_{l}}_{I_{l-1}}R & \mathbf{0} & \mathbf{0} \\
+-({}^{I_{l-1}}_{G}R)^{T}\left[{\mathrm{y}}_{l-1}\right]_{\times} & \mathbf{I} & \mathbf{I}\Delta{t}_{l-1} \\
+-({}^{I_{l-1}}_{G}R)^{T}\left[{\mathrm{s}}_{l-1}\right]_{\times} & \mathbf{0} & \mathbf{I}
+\end{bmatrix} \\
+&=\begin{bmatrix}
+\left[{}^{G}\mathrm{p}_{f_j}-{}^{G}\mathrm{p}_{I_l}\right]_{\times}({}_{G}^{I_{l-1}}R)^{T}+({}^{I_{l-1}}_{G}R)^{T}\left[{\mathrm{y}}_{l-1}\right]_{\times} &
+-\mathbf{I} & -\mathbf{I}\Delta{t}_{l-1}
+\end{bmatrix} \\ 
+&=
+\begin{bmatrix}
+\left[{}^{G}\mathrm{p}_{f_j}-{}^{G}\mathrm{p}_{I_l}\right]_{\times}({}_{G}^{I_{l-1}}R)^{T}+\left[ {}^{G}{p}_{l}-{}^{G}{p}_{l-1}-{}^{G}v_{I_{l-1}}\Delta{t}_{l-1}-\frac{1}{2}g \Delta{t}_{l-1}^2 \right]_{\times}({}_{G}^{I_{l-1}}R)^{T} & -\mathbf{I} & -\mathbf{I}\Delta{t}_{l-1} \\
+\end{bmatrix} \\
+&=
+\begin{bmatrix}
+\left[{}^{G}\mathrm{p}_{f_j}-{}^{G}\mathrm{p}_{I_{l-1}}-{}^{G}v_{I_{l-1}}\Delta{t}_{l-1}-\frac{1}{2}g \Delta{t}_{l-1}^2\right]_{\times}({}_{G}^{I_{l-1}}R)^{T} & -\mathbf{I} & -\mathbf{I}\Delta{t}_{l-1}
+\end{bmatrix}
+\end{aligned} \tag{20}
+$$
+其中第三行的展开中用到了反对称矩阵的性质：若矩阵R是特殊正交群SO(3)，则有$R[A]_{\times}R^T=[RA]_{\times}$的变换。
+
+接着继续看公式（18）中与$\Phi_{l-2}$的乘积：
+$$
+\begin{aligned}
+S1&=S0\Phi_{l-2}  \\
+&=\begin{bmatrix}
+\underbrace{\left[{}^{G}\mathrm{p}_{f_j}-{}^{G}\mathrm{p}_{I_{l-1}}-{}^{G}v_{I_{l-1}}\Delta{t}_{l-1}-\frac{1}{2}g \Delta{t}_{l-1}^2\right]_{\times}}_{m_{l-1}}({}_{G}^{I_{l-1}}R)^{T} & -\mathbf{I} & -\mathbf{I}\Delta{t}_{l-1}
+\end{bmatrix}
+\begin{bmatrix} 
+{}^{I_{l-1}}_{I_{l-2}}R & \mathbf{0} & \mathbf{0} \\
+-({}^{I_{l-2}}_{G}R)^{T}\left[{\mathrm{y}}_{l-2}\right]_{\times} & \mathbf{I} & \mathbf{I}\Delta{t}_{l-2} \\
+-({}^{I_{l-2}}_{G}R)^{T}\left[{\mathrm{s}}_{l-2}\right]_{\times} & \mathbf{0} & \mathbf{I}
+\end{bmatrix} \\
+&=
+\begin{bmatrix}
+(m_{l-1}+\left[{}^{G}{p}_{I_{l-1}}-{}^{G}{p}_{I_{{l-2}}}-{}^{G}v_{I_{l-2}}\Delta{t}_{l-2}-\frac{1}{2}g \Delta{t}_{l-2}^2\right]_{\times}+
+\left[{}^{G}{v}_{l-1}-{}^{G}{v}_{l-2}-g \Delta{t}_{l-2}\right]_{\times}\Delta{t}_{l-1})({}_{G}^{I_{l-2}}R)^{T} \\ -\mathbf{I} \\ -\mathbf{I}(\Delta{t}_{l-2}+\Delta{t}_{l-1})
+\end{bmatrix}^{T} \\ 
+\end{aligned} \tag{21}
+$$
+把上式中的第一行拿出来分析：
+$$
+\begin{aligned}
+S1_1
+&={}^{G}\mathrm{p}_{f_j}-{}^{G}\mathrm{p}_{I_{l-1}}-{}^{G}v_{I_{l-1}}\Delta{t}_{l-1}-\frac{1}{2}g \Delta{t}_{l-1}^2 \\
+&+{}^{G}{p}_{I_{l-1}}-{}^{G}{p}_{I_{l-2}}-{}^{G}v_{I_{l-2}}\Delta{t}_{l-2}-\frac{1}{2}g \Delta{t}_{l-2}^2 \\
+&+({}^{G}{v}_{l-1}-{}^{G}{v}_{l-2}-g \Delta{t}_{l-2})\Delta{t}_{l-1} \\
+&={}^{G}\mathrm{p}_{f_j}-{}^{G}{p}_{I_{l-2}}-{}^{G}v_{l-2}(\Delta{t}_{l-1}+\Delta{t}_{t-2})-\frac{1}{2}g(\Delta{t}_{l-1}^2+2\Delta{t}_{t-1}\Delta{t}_{t-2}+\Delta{t}_{t-2}^2) \\
+&={}^{G}\mathrm{p}_{f_j}-{}^{G}{p}_{I_{l-2}}-{}^{G}v_{l-2}(\Delta{t}_{l-1}+\Delta{t}_{t-2})-\frac{1}{2}g(\Delta{t}_{l-1}+\Delta{t}_{t-2})^2 
+\end{aligned}
+$$
+上式带入公式（21）可以得到：
+$$
+S1=
+\begin{bmatrix}
+\left[{}^{G}\mathrm{p}_{f_j}-{}^{G}{p}_{I_{l-2}}-{}^{G}v_{l-2}(\Delta{t}_{l-1}+\Delta{t}_{t-2})-\frac{1}{2}g(\Delta{t}_{l-1}+\Delta{t}_{t-2})^2 \right]_{\times}({}_{G}^{I_{l-2}}R)^{T} \\
+-\mathbf{I} \\ -\mathbf{I}(\Delta{t}_{l-2}+\Delta{t}_{l-1})
+\end{bmatrix}^{T}
+$$
+后面的情况均类似，所以由归纳法可以得到：
+$$
+\mathcal{O}_{l}=J_{(f_j|l)}{}^{C}_{I}R{}_{G}^{I_l}R
+\begin{bmatrix} \underbrace{\left[{}^{G}\mathrm{p}_{f_j}-{}^{G}{p}_{I_{k}}-{}^{G}v_{k}\Delta{t}-\frac{1}{2}g\Delta{t}^2 \right]_{\times}({}_{G}^{I_{k}}R)^{T}, -\mathbf{I},  -\mathbf{I}\Delta{t}}_{IMU} & \underbrace{\dots , \mathbf{I} , \dots , \mathbf{0}}_{feature} \end{bmatrix} \tag{22}
+$$
+其中$\Delta{t}=\Delta{t}_{l-1}+\dots+\Delta{t}_{k}$。
+
+ 容易看出（不是论文这么说真心凑不出啊），在理想情况下，能观性矩阵的零空间为：
+$$
+\mathbf{N}=\left[\begin{array}{cc}
+\mathbf{0}_{3} & {}^{I_k}_{G}\mathbf{R} \mathbf{g} \\
+\mathbf{I}_{3} & -\left[^{G} \mathbf{p}_{k}\right]_\times{\mathbf{g}} \\
+\mathbf{0}_{3} & -\left[^{G} \mathbf{v}_{k}\right]_\times{\mathbf{g}} \\
+\mathbf{I}_{3} & -\left[^{G} \mathbf{p}_{f_1}\right]_\times{\mathbf{g}} \\
+\mathbf{I}_{3} & -\left[^{G} \mathbf{p}_{f_2}\right]_\times{\mathbf{g}} \\
+\vdots & \vdots \\
+\mathbf{I}_{3} & -\left[^{G} \mathbf{p}_{f_N}\right]_\times{\mathbf{g}}
+\end{array}\right] \tag{23}
+$$
+读者可以将公式（22）与公式（23）相乘，发现均为0，其中最后的g其实是为了凑两个g的叉乘而存在的。
+
+&nbsp;
+
+### 小结
+
+在求解理想情况下的能观性矩阵时，主要利用了如下几点，这几点也是对于启发FEJ非常重要的几点：
+
+1. 从公式（20）和公式（21）的旋转矩阵相乘可以看到，由于是理想情况，因此旋转矩阵可以直接消去 $l-1$ 时刻的影响：
+   $$
+   ({}^{I_{l-2}}_{G}R)^{T}=({}^{I_{l-1}}_{G}R)^{T}{}^{I_{l-1}}_{I_{l-2}}R \tag{24}
+   $$
+
+2. 由公式（21）及其附属推导可以看到，整个化简的关键在于位移和速度的量不变化；
+
+&nbsp;
+
+----
+
+## 实际情况下的能观性矩阵
 
