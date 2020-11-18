@@ -150,7 +150,7 @@ $$
 
 ### 状态传递的传递方程
 
-结合公式（5）（9）（12）可以写出在$l$时刻的误差状态的传递方程，对应于KF的预测部分；
+结合公式（5）（9）（12）可以写出在 $l$ 时刻的误差状态的传递方程，对应于KF的预测部分；
 $$
 \begin{bmatrix}
 {}^{I_{l+1}}_{G}\tilde{\theta}^{(l)} \\
@@ -343,3 +343,93 @@ $$
 
 ## 实际情况下的能观性矩阵
 
+下面终于要分析一下实际的能观性矩阵的东西了。
+
+假设程序运行到了$\alpha_{i+1}$时刻，那么对于第 $l$ 个位姿节点（因为MSCKF在维护一个窗口，窗口内的参数都是会更新的）能观性矩阵的组成部分来说：
+
+1. 状态转移矩阵为$\Phi_{l-1}(\mathrm{\hat{x}}_{I_l}^{(l-1)}, \mathrm{\hat{x}}_{I_{l-1}}^{(l-1)})$，$\Phi_{l-2}(\mathrm{\hat{x}}_{I_{l-1}}^{(l-2)}, \mathrm{\hat{x}}_{I_{l-2}}^{(l-2)}$，$\dots$，$\Phi_{k}(\mathrm{\hat{x}}_{k+1}^{(k)}, \mathrm{\hat{x}}_{I_{k}}^{(k)})$，这部分因为是历史递推过来的，所以**不能**受到后来更新的影响；
+2. 依旧对于特征点$P_{f_j} $ ，观测矩阵$\mathbf{H}_{l|\alpha_i}=\partial{\mathbf{e}^{(\alpha_i+1)}_{l}}/\partial{\mathrm{\hat{x}}_{l}^{(\alpha_i)}}$，此时公式中使用了 $l$ 节点最新的估计值，这里有读者可能比较疑惑为什么变量使用的是$\alpha_i$时刻的值，**因为在$\alpha_i+1$时刻，在窗口中的变量还没有被最新的观测更新**，所以在线性化的时候，值依旧是上一次被更新的值，也就是$\mathrm{\hat{x}}_{l}^{\alpha_i}$；
+
+针对上面的两个点，这里写出他们的具体形式：
+
+#### 状态转移矩阵
+
+类比公式（13）可得：
+$$
+\Phi_{l-1}(\mathrm{\hat{x}}_{I_l}^{(l-1)}, \mathrm{\hat{x}}_{I_{l-1}}^{(l-1)})=
+\begin{bmatrix} 
+{}^{I_{l}}_{I_{l-1}}R^{(l-1)} & \mathbf{0} & \mathbf{0} \\
+-({}^{I_{l-1}}_{G}R^{(l-1)})^{T}\left[\hat{\mathrm{y}}^{(l-1)}_{l-1}\right]_{\times} & \mathbf{I} & \mathbf{I}\Delta{t}_{l-1} \\
+-({}^{I_{l-1}}_{G}R^{(l-1)})^{T}\left[\hat{\mathrm{s}}^{(l-1)}_{l-1}\right]_{\times} & \mathbf{0} & \mathbf{I}
+\end{bmatrix} \tag{25}
+$$
+
+#### 观测矩阵
+
+类比公式（16），这里直接写出综合形式：
+$$
+\mathrm{H}_{l}^{(\alpha_i)}=J_{(f_j|l)} {}^{C}_{I}R {}_{G}^{I_l}R^{(\alpha_{i})}
+\left\{\begin{bmatrix} \left[{}^{G}\mathrm{\hat{p}}_{f_j}-{}^{G}\mathrm{\hat{p}}_{I_l}^{(\alpha_i)}\right]_{\times}({}_{G}^{I_l}R^{(\alpha_i)})^{T} & -\mathbf{I}_{3\times3} & \mathbf{0}_{3\times3}\end{bmatrix} \quad \dots \quad \mathbf{I} \quad \dots \quad \mathbf{0} \right\} \tag{26}
+$$
+&nbsp;
+
+#### 能观矩阵的构建
+
+这里的推导就超级麻烦了，好在我们依旧可以从前两次乘法运算之后看到问题所在，因此类比于公式（19），先展开第一个乘积：
+$$
+\begin{aligned}
+M0^{(\alpha_i)}&=\begin{bmatrix} \left[{}^{G}\mathrm{\hat{p}}_{f_j}-{}^{G}\mathrm{\hat{p}}_{I_l}^{(\alpha_i)}\right]_{\times}({}_{G}^{I_l}R^{(\alpha_i)})^{T} & -\mathbf{I}_{3\times3} & \mathbf{0}_{3\times3}\end{bmatrix}
+\begin{bmatrix} 
+{}^{I_{l}}_{I_{l-1}}R^{(l-1)} & \mathbf{0} & \mathbf{0} \\
+-({}^{I_{l-1}}_{G}R^{(l-1)})^{T}\left[\hat{\mathrm{y}}^{(l-1)}_{l-1}\right]_{\times} & \mathbf{I} & \mathbf{I}\Delta{t}_{l-1} \\
+-({}^{I_{l-1}}_{G}R^{(l-1)})^{T}\left[\hat{\mathrm{s}}^{(l-1)}_{l-1}\right]_{\times} & \mathbf{0} & \mathbf{I}
+\end{bmatrix} \\
+&=
+\begin{bmatrix}
+\left[{}^{G}\mathrm{\hat{p}}_{f_j}-{}^{G}\mathrm{\hat{p}}_{I_l}^{(\alpha_i)}\right]_{\times}({}_{G}^{I_l}R^{(\alpha_i)})^{T}({}^{I_{l}}_{I_{l-1}}R^{(l-1)})+({}^{I_{l-1}}_{G}R^{(l-1)})^{T}\left[\hat{\mathrm{y}}^{(l-1)}_{l-1}\right]_{\times} & -\mathbf{I} & -\mathbf{I}\Delta{t}_{l-1} 
+\end{bmatrix}
+\end{aligned} \tag{27}
+$$
+可以看到，重点是在上式中的第一个元素，将该部分单独展开：
+$$
+\begin{aligned}
+M0^{(\alpha_i)}_{1}&=\left[\underbrace{\left[{}^{G}\mathrm{\hat{p}}_{f_j}-{}^{G}\mathrm{\hat{p}}_{I_l}^{(\alpha_i)}\right]_{\times}}_{part1}\underbrace{({}_{G}^{I_l}R^{(\alpha_i)})^{T}({}^{I_{l}}_{G}R^{(l-1)})}_{D1}+\underbrace{\left[ {}^{G}\hat{p}_{l}^{(l-1)}-{}^{G}\hat{p}_{l-1}^{(l-1)}-{}^{G}\hat{v}_{I_{l-1}}^{(l-1)}\Delta{t}_{l-1}-\frac{1}{2}g \Delta{t}_{l-1}^2 \right]_{\times}}_{part2}\right]({}^{I_{l-1}}_{G}R^{(l-1)})^{T} \\
+&=\left[
+part1 \underbrace{\left((\mathbf{I}-\lfloor{}^{(\alpha_i)}\theta_{(l-1)}\rfloor_{\times})({}^{I_{l}}_{G}R^{(l-1)})\right)^{T}({}^{I_{l}}_{G}R^{(l-1)})}_{D1}+part2
+\right]
+({}^{I_{l-1}}_{G}R^{(l-1)})^{T}  \\
+&=\left[
+\underbrace{part1+part2}_{D2}+part1\underbrace{\left(({}^{I_{l}}_{G}R^{(l-1)})^{T}\lfloor{}^{(\alpha_i)}\theta_{(l-1)}\rfloor_{\times}({}^{I_{l}}_{G}R^{(l-1)})\right)}_{D3}
+\right]({}^{I_{l-1}}_{G}R^{(l-1)})^{T}  \\
+&=\left[
+\lfloor
+{}^{G}\mathrm{\hat{p}}_{f_j}\underbrace{-{}^{G}\mathrm{\hat{p}}_{I_l}^{(\alpha_i)}+{}^{G}\hat{p}_{l}^{(l-1)}}_{D4}-{}^{G}\hat{p}_{l-1}^{(l-1)}-{}^{G}\hat{v}_{I_{l-1}}^{(l-1)}\Delta{t}_{l-1}-\frac{1}{2}g \Delta{t}_{l-1}^2
+\rfloor_{\times} 
++ part1\times D3
+\right]({}^{I_{l-1}}_{G}R^{(l-1)})^{T} \\
+&=\left[
+\lfloor
+{}^{G}\mathrm{\hat{p}}_{f_j}-{}^{G}\hat{p}_{l-1}^{(l-1)}-{}^{G}\hat{v}_{I_{l-1}}^{(l-1)}\Delta{t}_{l-1}-\frac{1}{2}g \Delta{t}_{l-1}^2
+\rfloor_{\times}+\lfloor-{}^{G}\mathrm{\hat{p}}_{I_l}^{(\alpha_i)}+{}^{G}\hat{p}_{l}^{(l-1)}\rfloor_{\times}+part1\times D3
+\right]({}^{I_{l-1}}_{G}R^{(l-1)})^{T}
+\end{aligned}
+$$
+
+其中：
+
+1. 第一行的化简将$\lfloor \hat{\mathrm{y}}^{(l-1)}_{l}\rfloor_{\times}$直接展开，且使用$\lfloor Ra \rfloor_{\times}=R\lfloor a \rfloor_{\times}R^{T}$的性质形成了part2部分；
+2. 第三行的化简使用$\lfloor a \rfloor_{\times}^{T}=-\lfloor a \rfloor_{\times}$的性质，把负号消除形成D3部分；
+3. 最后一行的化简，因为希望凑出一个类似于公式（20）最后一行的形式，所以这里直接将D4部分移了出来；
+
+至此第一次乘积部分我们就完成了；下面来看第二次乘积：
+$$
+\begin{aligned}
+M1^{(\alpha_i)}&=\begin{bmatrix} M0_{1}^{\alpha_i}({}^{I_{l-1}}_{G}R^{(l-1)})^{T} & -\mathbf{I} & \mathbf{I}\Delta{t}_{l-1}\end{bmatrix}
+\begin{bmatrix} 
+{}^{I_{l-1}}_{G}R^{(l-2)}({}^{I_{l-2}}_{G}R^{(l-2)})^{T} & \mathbf{0} & \mathbf{0} \\
+-({}^{I_{l-2}}_{G}R^{(l-2)})^{T}\left[\hat{\mathrm{y}}^{(l-2)}_{l-2}\right]_{\times} & \mathbf{I} & \mathbf{I}\Delta{t}_{l-2} \\
+-({}^{I_{l-2}}_{G}R^{(l-2)})^{T}\left[\hat{\mathrm{s}}^{(l-2)}_{l-2}\right]_{\times} & \mathbf{0} & \mathbf{I}
+\end{bmatrix} \\
+&=
+\end{aligned}
+$$
