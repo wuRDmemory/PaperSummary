@@ -20,7 +20,7 @@
 
 1. Consistency of EKF-Based Visual-Inertial Odometry. 关于MSCKF一致性的分析，也是本文主要参考的论文；
 2. Analysis and Improvement of the Consistency of Extended Kalman Filter based SLAM. 黄老师关于EKF一致性的分析；
-3. Generalized Analysis and Improvement of the Consistency of EKF-based SLAM. 黄老师同年发表的一篇更长的关于一致性的文章，可以认为是参考2的扩充版；
+3. Generalized Analysis and Improvement of the Consistency of EKF-based SLAM. 黄老师同年发表的一篇更长的关于一致性的文章，可以认为是参考2的详细版；
 
 &nbsp;
 
@@ -293,7 +293,7 @@ S1_1
 &+({}^{G}{v}_{l-1}-{}^{G}{v}_{l-2}-g \Delta{t}_{l-2})\Delta{t}_{l-1} \\
 &={}^{G}\mathrm{p}_{f_j}-{}^{G}{p}_{I_{l-2}}-{}^{G}v_{l-2}(\Delta{t}_{l-1}+\Delta{t}_{t-2})-\frac{1}{2}g(\Delta{t}_{l-1}^2+2\Delta{t}_{t-1}\Delta{t}_{t-2}+\Delta{t}_{t-2}^2) \\
 &={}^{G}\mathrm{p}_{f_j}-{}^{G}{p}_{I_{l-2}}-{}^{G}v_{l-2}(\Delta{t}_{l-1}+\Delta{t}_{t-2})-\frac{1}{2}g(\Delta{t}_{l-1}+\Delta{t}_{t-2})^2 
-\end{aligned}
+\end{aligned} \tag{21A}
 $$
 上式带入公式（21）可以得到：
 $$
@@ -301,7 +301,7 @@ S1=
 \begin{bmatrix}
 \left[{}^{G}\mathrm{p}_{f_j}-{}^{G}{p}_{I_{l-2}}-{}^{G}v_{l-2}(\Delta{t}_{l-1}+\Delta{t}_{t-2})-\frac{1}{2}g(\Delta{t}_{l-1}+\Delta{t}_{t-2})^2 \right]_{\times}({}_{G}^{I_{l-2}}R)^{T} \\
 -\mathbf{I} \\ -\mathbf{I}(\Delta{t}_{l-2}+\Delta{t}_{l-1})
-\end{bmatrix}^{T}
+\end{bmatrix}^{T} \tag{21B}
 $$
 后面的情况均类似，所以由归纳法可以得到：
 $$
@@ -399,7 +399,7 @@ part1 \underbrace{\left((\mathbf{I}-\lfloor{}^{(\alpha_i)}\theta_{(l-1)}\rfloor_
 \right]
 ({}^{I_{l-1}}_{G}R^{(l-1)})^{T}  \\
 &=\left[
-\underbrace{part1+part2}_{D2}+part1\underbrace{\left(({}^{I_{l}}_{G}R^{(l-1)})^{T}\lfloor{}^{(\alpha_i)}\theta_{(l-1)}\rfloor_{\times}({}^{I_{l}}_{G}R^{(l-1)})\right)}_{D3}
+\underbrace{part1+part2}_{D2}+part1\underbrace{\left(({}^{I_{l}}_{G}R^{(l-1)})^{T}\lfloor{}^{(\alpha_i)}\theta^{(l-1)}_{l}\rfloor_{\times}({}^{I_{l}}_{G}R^{(l-1)})\right)}_{D3}
 \right]({}^{I_{l-1}}_{G}R^{(l-1)})^{T}  \\
 &=\left[
 \lfloor
@@ -408,11 +408,11 @@ part1 \underbrace{\left((\mathbf{I}-\lfloor{}^{(\alpha_i)}\theta_{(l-1)}\rfloor_
 + part1\times D3
 \right]({}^{I_{l-1}}_{G}R^{(l-1)})^{T} \\
 &=\left[
-\lfloor
+\underbrace{\lfloor
 {}^{G}\mathrm{\hat{p}}_{f_j}-{}^{G}\hat{p}_{l-1}^{(l-1)}-{}^{G}\hat{v}_{I_{l-1}}^{(l-1)}\Delta{t}_{l-1}-\frac{1}{2}g \Delta{t}_{l-1}^2
-\rfloor_{\times}+\lfloor-{}^{G}\mathrm{\hat{p}}_{I_l}^{(\alpha_i)}+{}^{G}\hat{p}_{l}^{(l-1)}\rfloor_{\times}+part1\times D3
+\rfloor_{\times}}_{part3}+\underbrace{\lfloor-{}^{G}\mathrm{\hat{p}}_{I_l}^{(\alpha_i)}+{}^{G}\hat{p}_{I_l}^{(l-1)}\rfloor_{\times}}_{D5}+\underbrace{part1\times D3}_{D6}
 \right]({}^{I_{l-1}}_{G}R^{(l-1)})^{T}
-\end{aligned}
+\end{aligned} \tag{28}
 $$
 
 其中：
@@ -424,12 +424,186 @@ $$
 至此第一次乘积部分我们就完成了；下面来看第二次乘积：
 $$
 \begin{aligned}
-M1^{(\alpha_i)}&=\begin{bmatrix} M0_{1}^{\alpha_i}({}^{I_{l-1}}_{G}R^{(l-1)})^{T} & -\mathbf{I} & \mathbf{I}\Delta{t}_{l-1}\end{bmatrix}
+M1^{(\alpha_i)}&=\begin{bmatrix} M0_{1}^{\alpha_i}({}^{I_{l-1}}_{G}R^{(l-1)})^{T} & -\mathbf{I} & -\mathbf{I}\Delta{t}_{l-1}\end{bmatrix}
 \begin{bmatrix} 
 {}^{I_{l-1}}_{G}R^{(l-2)}({}^{I_{l-2}}_{G}R^{(l-2)})^{T} & \mathbf{0} & \mathbf{0} \\
 -({}^{I_{l-2}}_{G}R^{(l-2)})^{T}\left[\hat{\mathrm{y}}^{(l-2)}_{l-2}\right]_{\times} & \mathbf{I} & \mathbf{I}\Delta{t}_{l-2} \\
 -({}^{I_{l-2}}_{G}R^{(l-2)})^{T}\left[\hat{\mathrm{s}}^{(l-2)}_{l-2}\right]_{\times} & \mathbf{0} & \mathbf{I}
 \end{bmatrix} \\
 &=
+\begin{bmatrix}
+\left[M0_{1}^{\alpha_i}\underbrace{({}^{I_{l-1}}_{G}R^{(l-1)})^{T}({}^{I_{l-1}}_{G}R^{(l-2)})}_{D7}+\underbrace{ \lfloor \hat{\mathrm{y}}^{(l-2)}_{l-2} \rfloor_{\times}+\lfloor \hat{\mathrm{s}}^{(l-2)}_{l-2}\Delta{t}_{l-1} \rfloor_{\times}}_{part4}\right]({}^{I_{l-2}}_{G}R^{(l-2)})^{T} \\
+-\mathbf{I} \\ 
+-\mathbf{I}(\Delta{t}_{l-1}+\Delta{t}_{l-2})
+\end{bmatrix}^{T}
+\end{aligned} \tag{29}
+$$
+
+这里休息一下，因为其中做了一些变换和notation上的偷懒：
+
+1. 把公式（28）中方括号中的部分复用了标示$M0_{1}^{\alpha_i}$；
+
+2. 复用了标示$\hat{\mathrm{y}}^{(l-2)}_{l-2}$，如下：
+   $$
+   -({}^{I_{l-2}}_{G}R^{(l-2)})^{T}\left[\hat{\mathrm{y}}^{(l-2)}_{l-2}\right]_{\times}=-\lfloor \underbrace{{}^{G}\hat{p}^{(l-2)}_{I_{l-1}}-{}^{G}\hat{p}^{(l-2)}_{I_{l-2}}-{}^{G}\hat{v}_{I_{l-2}}^{(l-2)}\Delta{t}_{l-2}-\frac{1}{2}g\Delta{t}_{l-2}^{2}}_{\hat{\mathrm{y}}^{(l-2)}_{l-2}}\rfloor_{\times}({}^{I_{l-2}}_{G}R^{(l-2)})^{T}
+   $$
+
+3. 复用了标示$\hat{\mathrm{s}}^{(l-2)}_{l-2}$，如下：
+	$$
+	-({}^{I_{l-2}}_{G}R^{(l-2)})^{T}\left[\hat{\mathrm{s}}^{(l-2)}_{l-2}\right]_{\times}=-\lfloor \underbrace{{}^{G}\hat{v}^{(l-2)}_{I_{l-1}}-{}^{G}\hat{v}^{(l-2)}_{I_{l-2}}-g\Delta{t}_{l-2}}_{\hat{\mathrm{s}}^{(l-2)}_{l-2}}\rfloor_{\times}({}^{I_{l-2}}_{G}R^{(l-2)})^{T}
+	$$
+
+回到公式（29）的化简上来，可以看到重点其实在首个元素的最开始的乘法中，这里单独展开有：
+$$
+\begin{aligned}
+M0_{1}^{\alpha_i}\times D7 &=M0_{1}^{\alpha_i}\left((\mathbf{I}-\lfloor{}^{(l-1)}\theta^{(l-2)}_{l-1}\rfloor_{\times}){}^{I_{l-1}}_{G}R^{(l-2)}\right)^{T}({}^{I_{l-1}}_{G}R^{(l-2)}) \\
+&=M0_{1}^{\alpha_i}+\underbrace{M0_{1}^{\alpha_i}\lfloor ({}^{I_{l-1}}_{G}R^{(l-2)})^{T} ({}^{(l-1)}\theta^{(l-2)}_{l-1})\rfloor_{\times}}_{D8}
+\end{aligned} \tag{30}
+$$
+推导到这个地方的时候，结合公式（28）和（30），相信读者可以明显的看到以下几个事实：
+
+1. 公式（28）中的part3和公式（29）中的part4结合就可以得到类似于理想值下的结果，也就是公式（21）的首个元素：
+   $$
+   \begin{aligned}
+   part3+part4&=
+   {}^{G}\mathrm{\hat{p}}_{f_j}-{}^{G}\hat{p}_{l-1}^{(l-1)}-{}^{G}\hat{v}_{I_{l-1}}^{(l-1)}\Delta{t}_{l-1}-\frac{1}{2}g \Delta{t}_{l-1}^2 \\
+   &+ {}^{G}\hat{p}^{(l-2)}_{I_{l-1}}-{}^{G}\hat{p}^{(l-2)}_{I_{l-2}}-{}^{G}\hat{v}_{I_{l-2}}^{(l-2)}\Delta{t}_{l-2}-\frac{1}{2}g\Delta{t}_{l-2}^{2} \\
+   &+ {}^{G}\hat{v}^{(l-2)}_{I_{l-1}}\Delta{t}_{l-1}-{}^{G}\hat{v}^{(l-2)}_{I_{l-2}}\Delta{t}_{l-1}-g\Delta{t}_{l-2}\Delta{t}_{l-1} \\
+   &=\underbrace{{}^{G}\mathrm{\hat{p}}_{f_j}-{}^{G}\hat{p}^{(l-2)}_{I_{l-2}}-{}^{G}\hat{v}^{(l-2)}_{I_{l-2}}(\Delta{t}_{l-1}+\Delta{t}_{l-2})-\frac{1}{2}g(\Delta{t}_{l-1}+\Delta{t}_{l-2})^2}_{part5} \\
+   &+ \underbrace{({}^{G}\hat{v}_{I_{l-1}}^{(l-2)}-{}^{G}\hat{v}_{I_{l-1}}^{(l-1)})\Delta{t}_{l-1}+({}^{G}\hat{p}^{(l-2)}_{I_{l-1}}-{}^{G}\hat{p}_{I_{l-1}}^{(l-1)})}_{D9}
+   \end{aligned} \tag{31}
+   $$
+   可以看到，part5已经和公式（21）形式上一抹一样了，只不过除了这部分之外，**多了D9的部分**；
+
+2. 在对公式（28）和公式（29）进行化简的时候，发现D1和D7部分真的是惊人的相似，**都是说对于同一个变量，使用了两个时刻的估计值，从而造成在化简的时候多出了角度的扰动量**，形成了D3和D8部分；
+
+3. 同理，也能发现D5和D9部分也是一样的问题，同样的变量因为使用了不同时刻的估计值，产生了扰动项；
+
+后面笔者就不进行展开了，十分麻烦，详细可以看参考1中的公式（42）（43）。
+
+&nbsp;
+
+-----
+
+## First-Estimate-Jacobian
+
+通过上面三点的分析，不难发现，**既然同一个变量使用了不同时刻的估计会产生扰动项，那么都使用一个时刻的估计值不就好了么**，其实这就是FEJ做的事情！
+
+如果我们按照这个思路，那么将公式（25）到公式（31）中的所有的$\mathrm{x}^{(k+)}_{k}$都变为$\mathrm{x}_{k}^{k-1}$，之后回代到公式（28）（30）（31）中：
+
+1. $D3=\left(({}^{I_{l}}_{G}R^{(l-1)})^{T}\lfloor{}^{(\alpha_i)}\theta^{(l-1)}_{l}\rfloor_{\times}({}^{I_{l}}_{G}R^{(l-1)})\right)$，对于 $l$ 节点，在时刻 $\alpha_i$ 与时刻 $l-1$ 使用的都是相同的估计值，所以扰动项 ${}^{(\alpha_i)}\theta^{(l-1)}_{l}={}^{(l-1)}\theta^{(l-1)}_{l}=\mathbf{0}$，所以整个D3值为0，导致后面的D6=part1 x D3也为0；
+2. $D5=-{}^{G}\mathrm{\hat{p}}_{I_l}^{(\alpha_i)}+{}^{G}\hat{p}_{I_l}^{(l-1)}=-{}^{G}\mathrm{\hat{p}}_{I_l}^{(l-1)}+{}^{G}\hat{p}_{I_l}^{(l-1)}=\mathbf{0}$；
+3. D8与D3同理，由${}^{(l-1)}\theta^{(l-2)}_{l-1}=\mathbf{0}$导致D8为0；
+4. D9与D5同理，也全为0；
+
+这么一代入，公式（29）得到了一个非常nice的形式：
+$$
+\begin{aligned}
+M1^{(\alpha_i)}&=
+\begin{bmatrix}
+\lfloor {}^{G}\mathrm{\hat{p}}_{f_j}-{}^{G}\hat{p}^{(l-3)}_{I_{l-2}}-{}^{G}\hat{v}^{(l-3)}_{I_{l-2}}(\Delta{t}_{l-1}+\Delta{t}_{l-2})-\frac{1}{2}g(\Delta{t}_{l-1}+\Delta{t}_{l-2})^2 \rfloor_{\times}({}^{I_{l-2}}_{G}R^{(l-3)})^{T} \\
+-\mathbf{I} \\ 
+-\mathbf{I}(\Delta{t}_{l-1}+\Delta{t}_{l-2})
+\end{bmatrix}^{T}
+\end{aligned} \tag{32}
+$$
+
+
+可以看到，这个形式已经十分贴合公式（21）所表示的理想情况下的能观矩阵了；
+
+这里再往下再算一次矩阵乘法验证，也就是$M2^{(\alpha_i)}\Phi_{l-3}(\hat{\mathrm{x}}^{(l-3)}_{l-2}, \hat{\mathrm{x}}^{(l-4)}_{l-3})$，单独展开得到：
+$$
+\begin{aligned}
+M2^{(\alpha_i)}=
+\begin{bmatrix}
+M1^{\alpha_i}_1({}^{I_{l-2}}_{G}R^{(l-3)})^{T} & -\mathbf{I} & -\mathbf{I}(\Delta{t}_{l-1}+\Delta{t}_{l-2})
+\end{bmatrix}
+\begin{bmatrix} 
+{}^{I_{l-2}}_{G}R^{(l-3)}({}^{I_{l-3}}_{G}R^{(l-4)})^{T} & \mathbf{0} & \mathbf{0} \\
+-({}^{I_{l-3}}_{G}R^{(l-4)})^{T}\left[\hat{\mathrm{y}}^{(l-4)}_{l-3}\right]_{\times} & \mathbf{I} & \mathbf{I}\Delta{t}_{l-3} \\
+-({}^{I_{l-3}}_{G}R^{(l-4)})^{T}\left[\hat{\mathrm{s}}^{(l-4)}_{l-3}\right]_{\times} & \mathbf{0} & \mathbf{I}
+\end{bmatrix}
+\end{aligned} \tag{33}
+$$
+重点展开首个元素有：
+$$
+\begin{aligned}
+M2^{(\alpha_i)}_{1}&=
+{}^{G}\mathrm{\hat{p}}_{f_j}-{}^{G}\hat{p}^{(l-3)}_{I_{l-2}}-{}^{G}\hat{v}^{(l-3)}_{I_{l-2}}(\Delta{t}_{l-1}+\Delta{t}_{l-2})-\frac{1}{2}g(\Delta{t}_{l-1}+\Delta{t}_{l-2})^2 \\
+&+ {}^{G}\hat{p}^{(l-3)}_{I_{l-2}}-{}^{G}\hat{p}^{(l-4)}_{I_{l-3}}-{}^{G}\hat{v}_{I_{l-3}}^{(l-4)}\Delta{t}_{l-3}-\frac{1}{2}g\Delta{t}_{l-3}^{2} \\
+&+ {}^{G}\hat{v}^{(l-3)}_{I_{l-2}}(\Delta{t}_{l-1}+\Delta{t}_{l-2})-{}^{G}\hat{v}^{(l-4)}_{I_{l-3}}(\Delta{t}_{l-1}+\Delta{t}_{l-2})-g\Delta{t}_{l-3}(\Delta{t}_{l-1}+\Delta{t}_{l-2}) \\
+&={}^{G}\mathrm{\hat{p}}_{f_j}-{}^{G}\hat{p}^{(l-4)}_{I_{l-3}}-{}^{G}\hat{v}_{I_{l-3}}^{(l-4)}(\Delta{t}_{l-1}+\Delta{t}_{l-2}+\Delta{t}_{l-3})-\frac{1}{2}g(\Delta{t}_{l-1}+\Delta{t}_{l-2}+\Delta{t}_{l-3})^2
 \end{aligned}
 $$
+将以上结果回代入公式（33）可得：
+$$
+M2^{(\alpha_i)}=
+\begin{bmatrix}
+\lfloor {}^{G}\mathrm{\hat{p}}_{f_j}-{}^{G}\hat{p}^{(l-4)}_{I_{l-3}}-{}^{G}\hat{v}_{I_{l-3}}^{(l-4)}(\Delta{t}_{1-3})-\frac{1}{2}g(\Delta{t}_{1-3})^2 \rfloor_{\times}({}^{I_{l-3}}_{G}R^{(l-4)})^{T} \\ 
+-\mathbf{I} \\
+-\mathbf{I}\Delta{t}_{1-3}
+\end{bmatrix}^{T} \tag{34}
+$$
+可以预见到，一直乘积下去的结果最终的形式和公式（22）一样，如下：
+$$
+\hat{\mathcal{O}}_{l}=J_{(f_j|l)}{}^{C}_{I}R{}_{G}^{I_l}\hat{R}^{(l-1)}
+\begin{bmatrix} \underbrace{\left[{}^{G}\mathrm{\hat{p}}_{f_j}-{}^{G}\hat{p}_{I_{k}}^{(k-1)}-{}^{G}\hat{v}_{k}^{(k-1)}\Delta{t}-\frac{1}{2}g\Delta{t}_{k-\alpha_i}^2 \right]_{\times}({}_{G}^{I_{k}}\hat{R}^{(k-1)})^{T}, -\mathbf{I},  -\mathbf{I}\Delta{t}_{k-\alpha_i}}_{IMU} \\ \underbrace{\dots , \mathbf{I} , \dots , \mathbf{0}}_{feature} \end{bmatrix} \tag{35}
+$$
+公式中最后递推到了第 k 个节点，使用的是 $k-1$ 时刻的估计值。
+
+所以整个系统的零空间为：
+$$
+\mathbf{\hat{N}}=\left[\begin{array}{cc}
+\mathbf{0}_{3} & {}^{I_k}_{G}\mathbf{\hat{R}}^{(k-1)} \mathbf{g} \\
+\mathbf{I}_{3} & -\left[^{G} \mathbf{\hat{p}}_{k}^{(k-1)}\right]_\times{\mathbf{g}} \\
+\mathbf{0}_{3} & -\left[^{G} \mathbf{\hat{v}}_{k}^{(k-1)}\right]_\times{\mathbf{g}} \\
+\mathbf{I}_{3} & -\left[^{G} \mathbf{\hat{p}}_{f_1}\right]_\times{\mathbf{g}} \\
+\mathbf{I}_{3} & -\left[^{G} \mathbf{\hat{p}}_{f_2}\right]_\times{\mathbf{g}} \\
+\vdots & \vdots \\
+\mathbf{I}_{3} & -\left[^{G} \mathbf{\hat{p}}_{f_N}\right]_\times{\mathbf{g}}
+\end{array}\right]  \tag{36}
+$$
+
+
+&nbsp;
+
+-----
+
+## 关于零空间的一些理解
+
+对比公式（36）和公式（23），不难发现：
+
+1. 公式（23）的零空间的基底使用真值表示，亦即这些值不再随时间变化了；
+2. 公式（36）的零空间的基底使用的是 k-1​ 时刻估计出的 k 节点的值表示，k 节点此时的值并不一定是最优的！
+
+所以两个零空间一样么？显然是不一样的，但是两个零空间的物理意义却是相同的！
+
+具体而言：
+
+- 前三维影响IMU系的位置和特征点的位置，相当于把整个系统shift起来了；
+- 最后一个维度影响**以重力轴为旋转轴的旋转**，也就是世界系的yaw方向，也相当于在yaw方向上shift了整个系统；
+
+这部分读者感兴趣可以看参考1中的附录部分。
+
+其实整个推导下来之后，笔者认为FEJ更多的其实是通过固定节点的优化方向，进而保证整个线性系统能观矩阵的零空间一直保持一致，**但是需要明确的是，该优化方向与零空间并不是正交的**。
+
+进一步可以看到，其实该零空间是第一个观测方程的零空间，即在 k 时刻，整个能观性矩阵为：
+$$
+\hat{\mathcal{O}}^{(k)}=\left[ \mathrm{H}_{k}^{(k-1)} \right] \tag{37}
+$$
+而该能观性矩阵的零空间就是如公式（36）所示的零空间；
+
+所以FEJ维护的零空间在笔者看来其实就是以 k 时刻为起点的系统，在 k 时刻的零空间，从实际的角度来说，当系统在 k 时刻的状态确定了，那么整个系统的位置和yaw轴不可观其实都是跟起点紧密相关的（相当于把起点shift起来了），而后面使用FEJ都在维护这样的状态；
+
+&nbsp;
+
+---
+
+## 总结
+
+本文较为详细的推导了：
+
+1. 不同线性化点是如何影响整个能观性的；
+2. FEJ为什么可以保持整个系统的能观性不受影响；
+3. FEJ不仅保持零空间的维度，同时保持了零空间的物理意义不变了；
+
