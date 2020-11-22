@@ -31,7 +31,7 @@
 本文中公式比较多，所以Notation也比较多，先对Notation进行一些前置说明：
 
 1. $l$ 节点的理想值表示为$\mathrm{x}_{l}$；在 k 时刻的估计值表示为$\mathrm{\hat{x}}_{l}^{(k)}$；其误差状态表示为$\mathrm{\tilde{x}}_{l}$；
-2. $l$ 节点的估计值在不同时刻的关系为：$\mathbf{\hat{x}}^{(k+n)}_{l}={}^{(k+n)}\mathbf{\tilde{x}}^{(k)}_{l}+\mathbf{\hat{x}}^{(k)}_{l}$，特别的，对于旋转有：${}^{l}_{G}\mathbf{\hat{q}}^{(k+n)}\approx (\mathbf{I}+\lfloor {}^{(k+n)}\theta^{(k)}_{l}\rfloor_{\times}){}^{l}_{G}\mathbf{\hat{q}}^{(k)}$；
+2. $l$ 节点的估计值在不同时刻的关系为：$\mathbf{\hat{x}}^{(k+n)}_{l}={}^{(k+n)}\mathbf{\tilde{x}}^{(k)}_{l}+\mathbf{\hat{x}}^{(k)}_{l}$，特别的，对于旋转有：${}^{l}_{G}\mathbf{\hat{q}}^{(k+n)}\approx (\mathbf{I}-\lfloor {}^{(k+n)}\theta^{(k)}_{l}\rfloor_{\times}){}^{l}_{G}\mathbf{\hat{q}}^{(k)}$；
 
 由于整片文章公式太多了，其中Notation有些地方可能不是很对笔者也没有检查出来，同时后面为了简化还有些Notation的复用，但是笔者都进行了说明，有问题希望及时提出，笔者及时改正；
 
@@ -408,7 +408,7 @@ $$
 \begin{aligned}
 M0^{(\alpha_i)}_{1}&=\left[\underbrace{\left[{}^{G}\mathrm{\hat{p}}_{f_j}-{}^{G}\mathrm{\hat{p}}_{I_l}^{(\alpha_i)}\right]_{\times}}_{part1}\underbrace{({}_{G}^{I_l}R^{(\alpha_i)})^{T}({}^{I_{l}}_{G}R^{(l-1)})}_{D1}+\underbrace{\left[ {}^{G}\hat{p}_{l}^{(l-1)}-{}^{G}\hat{p}_{l-1}^{(l-1)}-{}^{G}\hat{v}_{I_{l-1}}^{(l-1)}\Delta{t}_{l-1}-\frac{1}{2}g \Delta{t}_{l-1}^2 \right]_{\times}}_{part2}\right]({}^{I_{l-1}}_{G}R^{(l-1)})^{T} \\
 &=\left[
-part1 \underbrace{\left((\mathbf{I}-\lfloor{}^{(\alpha_i)}\theta_{(l-1)}\rfloor_{\times})({}^{I_{l}}_{G}R^{(l-1)})\right)^{T}({}^{I_{l}}_{G}R^{(l-1)})}_{D1}+part2
+part1 \underbrace{\left((\mathbf{I}-\lfloor{}^{(\alpha_i)}\theta^{(l-1)}_{l}\rfloor_{\times})({}^{I_{l}}_{G}R^{(l-1)})\right)^{T}({}^{I_{l}}_{G}R^{(l-1)})}_{D1}+part2
 \right]
 ({}^{I_{l-1}}_{G}R^{(l-1)})^{T}  \\
 &=\left[
@@ -621,3 +621,5 @@ $$
 3. FEJ不仅保持零空间的维度，同时保持了零空间的物理意义不变了；
 
 还有需要说明的是：本文在解决能观性不同的问题上没有使用参考1中的方法，不过参考1中的方法将整个旋转部分去除的方法确实很强，篇幅所限这里就不展开了，感兴趣的可以自行阅读一下～
+
+下一篇笔者打算写一下强制让优化方向与零空间正交的OC-KF的方法，该方法也是开源工程S-MSCKF中使用的方法。
