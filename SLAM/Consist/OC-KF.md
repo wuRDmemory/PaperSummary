@@ -73,7 +73,26 @@ $$
 
 在MSCKF1.0的理论中，IMU的误差状态传递方程主要由运动方程求得，如下：
 $$
-
+\dot{\tilde{\mathbf{X}}}_{\mathrm{IMU}}=\mathbf{F} \tilde{\mathbf{X}}_{\mathrm{IMU}}+\mathbf{G} \mathbf{n}_{\mathrm{IMU}}  \tag{2}
 $$
 
+其中：
+$$
+\mathbf{F}=\left[\begin{array}{ccc}
+-\lfloor\hat{\boldsymbol{\omega}} \times\rfloor & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+\mathbf{0}_{3 \times 3} & \mathbf{0}_{3} & \mathbf{I}_{3 \times 3} \\
+-\mathbf{C}_{\hat{q}}^{T}\lfloor\hat{\mathbf{a}} \times\rfloor & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+\end{array}\right]
+$$
+由于此处的G对于能观性的分析没有实质性的用处，这里不作分析；
+
+将微分方程转为离散的形式：
+$$
+\boldsymbol{\tilde{X}}\left(t_{k+1}\right)=\boldsymbol{\Phi}\left(t_{k+1}, t_{k}\right) \boldsymbol{\tilde{X}}\left(t_{k}\right)+\int_{t_{k}}^{t_{k+1}} \boldsymbol{\Phi}\left(t_{k+1}, \tau\right) \boldsymbol{G}(\tau) \boldsymbol{n}(\tau) \mathrm{d} \tau \tag{3}
+$$
+其中：
+$$
+\boldsymbol{\Phi}\left(t_{k+1}, t_{k}\right)=\exp(\int_{t_{k}}^{t_{k+1}} \boldsymbol{F}(t) \mathrm{d} t)   \tag{4}
+$$
+&nbsp;
 
