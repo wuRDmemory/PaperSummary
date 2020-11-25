@@ -88,13 +88,13 @@ $$
 
 将微分方程转为离散的形式：
 $$
-\boldsymbol{\tilde{X}}\left(t_{k}\right)=\boldsymbol{\Phi}\left(t_{k}, t_{0}\right) \boldsymbol{\tilde{X}}\left(t_{0}\right)+\int_{t_{0}}^{t_{k}} \boldsymbol{\Phi}\left(t_{k}, \tau\right) \boldsymbol{G}(\tau) \boldsymbol{n}(\tau) \mathrm{d} \tau \tag{3}
+\boldsymbol{\tilde{X}}\left(t_{l+1}\right)=\boldsymbol{\Phi}\left(t_{l+1}, t_{l}\right) \boldsymbol{\tilde{X}}\left(t_{l}\right)+\int_{t_{l}}^{t_{l+1}} \boldsymbol{\Phi}\left(t_{l+1}, \tau\right) \boldsymbol{G}(\tau) \boldsymbol{n}(\tau) \mathrm{d} \tau \tag{3}
 $$
 其中：
 $$
 \begin{cases}
-\dot{\boldsymbol{\Phi}}\left(t, t_{0}\right) = \boldsymbol{F}(t)\boldsymbol{\Phi}\left(t, t_{0}\right) \\
-\boldsymbol{\Phi}\left(t_{k}, t_{0}\right)=\exp(\int_{t_{0}}^{t_{k}} \boldsymbol{F}(t) \mathrm{d} t)  
+\dot{\boldsymbol{\Phi}}\left(t_{l+1}, t_{l}\right) = \boldsymbol{F}(t)\boldsymbol{\Phi}\left(t_{l+1}, t_{l}\right) \\
+\boldsymbol{\Phi}\left(t_{l+1}, t_{l}\right)=\exp(\int_{t_{l}}^{t_{l+1}} \boldsymbol{F}(t) \mathrm{d} t)  
 \end{cases} \tag{4}
 $$
 &nbsp;
@@ -103,7 +103,7 @@ $$
 
 在OC-KF中，IMU部分的传递方程使用的是MSCKF1.0中的微分方程的形式，这里先来推导状态转移矩阵的闭式解。
 
-由公式（4）的第一行可以看出：
+由公式（4）的第一行可以列出如下公式，这里把时间跨度直接认为是 t，初始的时间为 t0：
 $$
 \begin{aligned}
 \begin{bmatrix}
@@ -112,14 +112,25 @@ $$
 \dot{\Phi}_{31}(t) & \dot{\Phi}_{32}(t) & \dot{\Phi}_{33}(t) \\
 \end{bmatrix}
 &=\left[\begin{array}{ccc}
--\lfloor\hat{\boldsymbol{\omega}}\rfloor_{\times} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+-\lfloor\hat{\boldsymbol{\omega}(t)}\rfloor_{\times} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
 \mathbf{0}_{3 \times 3} & \mathbf{0}_{3} & \mathbf{I}_{3 \times 3} \\
--({}^{G}_{I_t}R)^{T}\lfloor\hat{\mathbf{a_m}}\rfloor_{\times} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+-({}^{G}_{t}R)^{T}\lfloor\hat{\mathbf{a_m}(t)}\rfloor_{\times} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
 \end{array}\right]
 \begin{bmatrix}
 {\Phi}_{11}(t) & {\Phi}_{12}(t) & {\Phi}_{13}(t) \\
 {\Phi}_{21}(t) & {\Phi}_{22}(t) & {\Phi}_{23}(t) \\
 {\Phi}_{31}(t) & {\Phi}_{32}(t) & {\Phi}_{33}(t) \\
+\end{bmatrix} \\
+\begin{bmatrix}
+{\Phi}_{11}(t_0) & {\Phi}_{12}(t_0) & {\Phi}_{13}(t_0) \\
+{\Phi}_{21}(t_0) & {\Phi}_{22}(t_0) & {\Phi}_{23}(t_0) \\
+{\Phi}_{31}(t_0) & {\Phi}_{32}(t_0) & {\Phi}_{33}(t_0) \\
+\end{bmatrix} 
+&= 
+\begin{bmatrix}
+\mathbf{I} & \mathbf{0} & \mathbf{0} \\
+\mathbf{0} & \mathbf{I} & \mathbf{0} \\
+\mathbf{0} & \mathbf{0} & \mathbf{I} \\
 \end{bmatrix}
 \end{aligned} \tag{5}
 $$
@@ -158,6 +169,85 @@ $$
 由于初始的状态转移矩阵为单位矩阵，所以$\Phi_{12}(t_0)$和$\Phi_{13}(t_0)$均为0，$\Phi_{11}(t_0)=\mathbf{I}$，于是：
 $$
 \begin{cases}
-\Phi_{11}(t)={}_{}^{}
-\end{cases}
+\Phi_{11}(t_{l+1}, t_{l})=exp(\int_{t_l}^{t_{l+1}}(-\lfloor\hat{\omega}(t)\rfloor_{\times})dt)={}_{I_l}^{I_{l+1}}R \\
+\Phi_{12}(t_{l+1}, t_{l})=\mathbf{0} \\
+\Phi_{13}(t_{l+1}, t_{l})=\mathbf{0} \\
+\end{cases} \tag{7}
+$$
+
+&nbsp;
+
+#### 第三组
+
+由于第二组中的$\dot{\Phi}_{21}$与$\Phi_{31}$相关，所以这里先推导第三组的情况：
+$$
+\begin{cases}
+\Phi_{31}(t)=\int_{t_0}^{t} -({}^{G}_{t}R)^{T}\lfloor\hat{\mathbf{a_m}}(t)\rfloor_{\times} {}_{t_0}^{t}R dt \\
+\Phi_{32}(t)= \mathbf{I} \times \Phi_{32}(t_0) = \mathbf{0} \\ 
+\Phi_{33}(t)= \mathbf{I}\times \Phi_{33}(t_0) = \mathbf{I} \\ 
+\end{cases} \tag{8A}
+$$
+重点分析首行元素：
+$$
+\begin{aligned}
+\Phi_{31}(t)&=\int_{t_0}^{t} -({}^{G}_{t}R)^{T}\lfloor\hat{\mathbf{a_m}}(t)\rfloor_{\times} {}_{t_0}^{t}R dt \\
+&=\int_{t_0}^{t} -({}^{G}_{t}R)^{T}\lfloor {}_{G}^{t}R  ({}^{G}\hat{\mathbf{a}}(t)+{}^{G}\mathbf{g})\rfloor_{\times} {}_{t_0}^{t}R dt \\
+&=-\int_{t_0}^{t}\lfloor {}^{G}\hat{\mathbf{a}}(t)+{}^{G}\mathbf{g}\rfloor_{\times} {}_{t}^{G}R {}_{t_0}^{t}R dt \\
+&=-\int_{t_0}^{t}\lfloor {}^{G}\hat{\mathbf{a}}(t)+{}^{G}\mathbf{g}\rfloor_{\times} dt ({}^{t_0}_{G}R)^{T} \\
+&=-\lfloor {}^{G}v_{t}-{}^{G}v_{t_0}+{}^{G}\mathbf{g}(t-t_0) \rfloor_{\times}({}^{t_0}_{G}R)^{T}
+\end{aligned} \tag{8B}
+$$
+其中：
+
+1. $\mathbf{a}_{m}$表示在机体坐标系中的测量值，夹杂重力；
+2. ${}^{G}\mathbf{a}$表示在世界坐标系下的加速度，不夹杂重力；
+3. 最后一行化简引入了${}^{G}v_{t}={}^{G}v_{t_0}+\int{}^{G}\mathbf{a}dt$，其中的加速度不夹杂重力；
+
+所以公式（8A）可以重新写作：
+$$
+\begin{cases}
+\Phi_{31}(t)= -\lfloor {}^{G}v_{t}-{}^{G}v_{t_0}+{}^{G}\mathbf{g}(t-t_0) \rfloor_{\times}({}^{t_0}_{G}R)^{T}\\
+\Phi_{32}(t)= \mathbf{0} \\ 
+\Phi_{33}(t)= \mathbf{I} \\ 
+\end{cases} \tag{8}
+$$
+&nbsp;
+
+#### 第二组
+
+将第三组的结果带入到第二组中
+$$
+\begin{cases}
+\Phi_{21}(t)= -\int_{t_0}^{t} \int_{t_0}^{t}\lfloor {}^{G}\hat{\mathbf{a}}(t)+{}^{G}\mathbf{g}\rfloor_{\times} dt d\tau({}^{t_0}_{G}R)^{T}\\
+\Phi_{22}(t)= \mathbf{I} \times \Phi_{22}(t_0) = \mathbf{I} \\ 
+\Phi_{23}(t)= \Delta{t}\times \Phi_{22}(t_0) = \mathbf{I}\Delta{t} \\ 
+\end{cases} \tag{9A}
+$$
+重点分析首行元素：
+$$
+\begin{aligned}
+\Phi_{21}(t) &= -\int_{t_0}^{t} \int_{t_0}^{t}\lfloor {}^{G}\hat{\mathbf{a}}(t)+{}^{G}\mathbf{g}\rfloor_{\times} dt d\tau({}^{t_0}_{G}R)^{T} \\
+&=-\lfloor {}^{G}p_{t}-{}^{G}p_{t_0}-{}^{G}v_{t_0}(t-t_0)+\frac{1}{2}{}^{G}\mathbf{g}(t-t_0)^2 \rfloor_{\times}({}^{t_0}_{G}R)^{T}
+\end{aligned} \tag{9B}
+$$
+所以公式（9A）可以重新写作：
+$$
+\begin{cases}
+\Phi_{21}(t)= -\lfloor {}^{G}p_{t}-{}^{G}p_{t_0}-{}^{G}v_{t_0}(t-t_0)+\frac{1}{2}{}^{G}\mathbf{g}(t-t_0)^2 \rfloor_{\times}({}^{t_0}_{G}R)^{T} \\
+\Phi_{22}(t)= \mathbf{I} \\ 
+\Phi_{23}(t)= \mathbf{I}\Delta{t} \\ 
+\end{cases} \tag{9}
+$$
+&nbsp;
+
+#### 总结
+
+综合公式（7）（8）（9）可得：
+$$
+\boldsymbol{\Phi}\left(t_{l+1}, t_{l}\right)=
+\begin{bmatrix}
+{}_{I_l}^{I_{l+1}}R & 0 & 0 \\
+-\lfloor \mathbf{\hat{y}} \rfloor_{\times}({}^{I_l}_{G}R)^{T} & \mathbf{I} & \mathbf{I}\Delta{t} \\
+-\lfloor \mathbf{\hat{s}} \rfloor_{\times}({}^{I_l}_{G}R)^{T} & \mathbf{0} & \mathbf{I}
+\end{bmatrix}
 $$
