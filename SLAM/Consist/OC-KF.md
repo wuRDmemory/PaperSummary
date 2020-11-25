@@ -81,18 +81,83 @@ $$
 \mathbf{F}=\left[\begin{array}{ccc}
 -\lfloor\hat{\boldsymbol{\omega}} \times\rfloor & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
 \mathbf{0}_{3 \times 3} & \mathbf{0}_{3} & \mathbf{I}_{3 \times 3} \\
--\mathbf{C}_{\hat{q}}^{T}\lfloor\hat{\mathbf{a}} \times\rfloor & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+-({}_{G}^{I_l}R)^{T}\lfloor\hat{\mathbf{a_m}} \times\rfloor & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
 \end{array}\right]
 $$
 由于此处的G对于能观性的分析没有实质性的用处，这里不作分析；
 
 将微分方程转为离散的形式：
 $$
-\boldsymbol{\tilde{X}}\left(t_{k+1}\right)=\boldsymbol{\Phi}\left(t_{k+1}, t_{k}\right) \boldsymbol{\tilde{X}}\left(t_{k}\right)+\int_{t_{k}}^{t_{k+1}} \boldsymbol{\Phi}\left(t_{k+1}, \tau\right) \boldsymbol{G}(\tau) \boldsymbol{n}(\tau) \mathrm{d} \tau \tag{3}
+\boldsymbol{\tilde{X}}\left(t_{k}\right)=\boldsymbol{\Phi}\left(t_{k}, t_{0}\right) \boldsymbol{\tilde{X}}\left(t_{0}\right)+\int_{t_{0}}^{t_{k}} \boldsymbol{\Phi}\left(t_{k}, \tau\right) \boldsymbol{G}(\tau) \boldsymbol{n}(\tau) \mathrm{d} \tau \tag{3}
 $$
 其中：
 $$
-\boldsymbol{\Phi}\left(t_{k+1}, t_{k}\right)=\exp(\int_{t_{k}}^{t_{k+1}} \boldsymbol{F}(t) \mathrm{d} t)   \tag{4}
+\begin{cases}
+\dot{\boldsymbol{\Phi}}\left(t, t_{0}\right) = \boldsymbol{F}(t)\boldsymbol{\Phi}\left(t, t_{0}\right) \\
+\boldsymbol{\Phi}\left(t_{k}, t_{0}\right)=\exp(\int_{t_{0}}^{t_{k}} \boldsymbol{F}(t) \mathrm{d} t)  
+\end{cases} \tag{4}
 $$
 &nbsp;
 
+### OC-KF的传递方程
+
+在OC-KF中，IMU部分的传递方程使用的是MSCKF1.0中的微分方程的形式，这里先来推导状态转移矩阵的闭式解。
+
+由公式（4）的第一行可以看出：
+$$
+\begin{aligned}
+\begin{bmatrix}
+\dot{\Phi}_{11}(t) & \dot{\Phi}_{12}(t) & \dot{\Phi}_{13}(t) \\
+\dot{\Phi}_{21}(t) & \dot{\Phi}_{22}(t) & \dot{\Phi}_{23}(t) \\
+\dot{\Phi}_{31}(t) & \dot{\Phi}_{32}(t) & \dot{\Phi}_{33}(t) \\
+\end{bmatrix}
+&=\left[\begin{array}{ccc}
+-\lfloor\hat{\boldsymbol{\omega}}\rfloor_{\times} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+\mathbf{0}_{3 \times 3} & \mathbf{0}_{3} & \mathbf{I}_{3 \times 3} \\
+-({}^{G}_{I_t}R)^{T}\lfloor\hat{\mathbf{a_m}}\rfloor_{\times} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+\end{array}\right]
+\begin{bmatrix}
+{\Phi}_{11}(t) & {\Phi}_{12}(t) & {\Phi}_{13}(t) \\
+{\Phi}_{21}(t) & {\Phi}_{22}(t) & {\Phi}_{23}(t) \\
+{\Phi}_{31}(t) & {\Phi}_{32}(t) & {\Phi}_{33}(t) \\
+\end{bmatrix}
+\end{aligned} \tag{5}
+$$
+公式（5）可以引出如下的几组公式：
+$$
+\begin{cases}
+\dot{\Phi}_{11}(t)=-\lfloor \hat{\mathcal{w}} \rfloor_{\times}\Phi_{11}(t) \\
+\dot{\Phi}_{12}(t)=-\lfloor \hat{\mathcal{w}} \rfloor_{\times}\Phi_{12}(t) \\ 
+\dot{\Phi}_{13}(t)=-\lfloor \hat{\mathcal{w}} \rfloor_{\times}\Phi_{13}(t) \\ 
+\end{cases}  \quad
+\begin{cases}
+\dot{\Phi}_{21}(t)=\Phi_{31}(t) \\
+\dot{\Phi}_{22}(t)=\Phi_{32}(t) \\ 
+\dot{\Phi}_{23}(t)=\Phi_{33}(t) \\ 
+\end{cases}  \quad
+\begin{cases}
+\dot{\Phi}_{31}(t)=-({}^{G}_{I_t}R)^{T}\lfloor\hat{\mathbf{a_m}}\rfloor_{\times} \Phi_{11}(t) \\
+\dot{\Phi}_{32}(t)=-({}^{G}_{I_t}R)^{T}\lfloor\hat{\mathbf{a_m}}\rfloor_{\times} \Phi_{12}(t) \\ 
+\dot{\Phi}_{33}(t)=-({}^{G}_{I_t}R)^{T}\lfloor\hat{\mathbf{a_m}}\rfloor_{\times} \Phi_{13}(t) \\ 
+\end{cases} \tag{6}
+$$
+下面就是一组一组的展开一下：
+
+&nbsp;
+
+#### 第一组
+
+容易看出，第一组的闭式解其实都是exp函数，所以：
+$$
+\begin{cases}
+\Phi_{11}(t)=exp(-\lfloor \hat{\mathcal{w}} \rfloor_{\times}(t-t_0))\Phi_{11}(t_0) \\
+\Phi_{12}(t)=exp(-\lfloor \hat{\mathcal{w}} \rfloor_{\times}(t-t_0))\Phi_{12}(t_0) \\ 
+\Phi_{13}(t)=exp(-\lfloor \hat{\mathcal{w}} \rfloor_{\times}(t-t_0))\Phi_{13}(t_0) \\ 
+\end{cases}
+$$
+由于初始的状态转移矩阵为单位矩阵，所以$\Phi_{12}(t_0)$和$\Phi_{13}(t_0)$均为0，$\Phi_{11}(t_0)=\mathbf{I}$，于是：
+$$
+\begin{cases}
+\Phi_{11}(t)={}_{}^{}
+\end{cases}
+$$
