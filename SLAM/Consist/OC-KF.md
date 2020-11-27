@@ -169,9 +169,9 @@ $$
 由于初始的状态转移矩阵为单位矩阵，所以$\Phi_{12}(t_0)$和$\Phi_{13}(t_0)$均为0，$\Phi_{11}(t_0)=\mathbf{I}$，于是：
 $$
 \begin{cases}
-\Phi_{11}(t_{l+1}, t_{l})=exp(\int_{t_l}^{t_{l+1}}(-\lfloor\hat{\omega}(t)\rfloor_{\times})dt)={}_{I_l}^{I_{l+1}}R \\
-\Phi_{12}(t_{l+1}, t_{l})=\mathbf{0} \\
-\Phi_{13}(t_{l+1}, t_{l})=\mathbf{0} \\
+\Phi_{11}(t, t_{0})=exp(\int_{t_0}^{t}(-\lfloor\hat{\omega}(t)\rfloor_{\times})dt)={}_{t_0}^{t}R \\
+\Phi_{12}(t, t_{0})=\mathbf{0} \\
+\Phi_{13}(t, t_{0})=\mathbf{0} \\
 \end{cases} \tag{7}
 $$
 
@@ -244,10 +244,13 @@ $$
 
 综合公式（7）（8）（9）可得：
 $$
-\boldsymbol{\Phi}\left(t_{l+1}, t_{l}\right)=
+\boldsymbol{\Phi}\left(t, t_{0}\right)=
 \begin{bmatrix}
-{}_{I_l}^{I_{l+1}}R & 0 & 0 \\
--\lfloor \mathbf{\hat{y}} \rfloor_{\times}({}^{I_l}_{G}R)^{T} & \mathbf{I} & \mathbf{I}\Delta{t} \\
--\lfloor \mathbf{\hat{s}} \rfloor_{\times}({}^{I_l}_{G}R)^{T} & \mathbf{0} & \mathbf{I}
+{}_{t_0}^{t}R & 0 & 0 \\
+-\lfloor \mathbf{\hat{y}}^{(t)} \rfloor_{\times}({}^{t_0}_{G}R)^{T} & \mathbf{I} & \mathbf{I}\Delta{t} \\
+-\lfloor \mathbf{\hat{s}}^{(t)} \rfloor_{\times}({}^{t_0}_{G}R)^{T} & \mathbf{0} & \mathbf{I}
 \end{bmatrix}
 $$
+
+&nbsp;
+
