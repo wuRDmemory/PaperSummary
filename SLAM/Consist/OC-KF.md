@@ -240,7 +240,7 @@ $$
 $$
 &nbsp;
 
-#### 总结
+##### 小结
 
 综合公式（7）（8）（9）可得：
 $$
@@ -249,8 +249,68 @@ $$
 {}_{t_0}^{t}R & 0 & 0 \\
 -\lfloor \mathbf{\hat{y}}^{(t)} \rfloor_{\times}({}^{t_0}_{G}R)^{T} & \mathbf{I} & \mathbf{I}\Delta{t} \\
 -\lfloor \mathbf{\hat{s}}^{(t)} \rfloor_{\times}({}^{t_0}_{G}R)^{T} & \mathbf{0} & \mathbf{I}
-\end{bmatrix}
+\end{bmatrix} \tag{10}
 $$
 
 &nbsp;
 
+需要注意的是这里的转移矩阵是从 t0 时刻开始进行递推的。
+
+&nbsp;
+
+----
+
+### OC-KF相邻时刻的状态转移矩阵
+
+如上一章节可知，t1 时刻和 t2 时刻的状态转移矩阵分别如下：
+
+#### t1 时刻的状态转移矩阵
+
+$$
+\boldsymbol{\Phi}\left(t_1, t_{0}\right)=
+\begin{bmatrix}
+{}_{t_0}^{t_1}R & 0 & 0 \\
+-\lfloor \mathbf{\hat{y}}^{(t_1)} \rfloor_{\times}({}^{t_0}_{G}R)^{T} & \mathbf{I} & \mathbf{I}\Delta{t}_1 \\
+-\lfloor \mathbf{\hat{s}}^{(t_1)} \rfloor_{\times}({}^{t_0}_{G}R)^{T} & \mathbf{0} & \mathbf{I}
+\end{bmatrix} \tag{11}
+$$
+
+&nbsp;
+
+#### t2 时刻的状态转移矩阵
+
+$$
+\boldsymbol{\Phi}\left(t_2, t_{0}\right)=
+\begin{bmatrix}
+{}_{t_0}^{t_2}R & 0 & 0 \\
+-\lfloor \mathbf{\hat{y}}^{(t_2)} \rfloor_{\times}({}^{t_0}_{G}R)^{T} & \mathbf{I} & \mathbf{I}\Delta{t}_2 \\
+-\lfloor \mathbf{\hat{s}}^{(t_2)} \rfloor_{\times}({}^{t_0}_{G}R)^{T} & \mathbf{0} & \mathbf{I}
+\end{bmatrix} \tag{12}
+$$
+
+&nbsp;
+
+#### t1 到 t2 时刻的状态转移矩阵
+
+结合公式（11）（12）易得：
+$$
+\begin{aligned}
+\Phi(t_2, t_1)&=\Phi(t_2, t_0) (\Phi(t_1, t_0))^{-1} \\
+&=\begin{bmatrix}
+{}_{t_0}^{t_2}R & 0 & 0 \\
+-\lfloor \mathbf{\hat{y}}^{(t_2)} \rfloor_{\times}({}^{t_0}_{G}R)^{T} & \mathbf{I} & \mathbf{I}\Delta{t}_2 \\
+-\lfloor \mathbf{\hat{s}}^{(t_2)} \rfloor_{\times}({}^{t_0}_{G}R)^{T} & \mathbf{0} & \mathbf{I}
+\end{bmatrix}
+\begin{bmatrix}
+{}_{t_0}^{t_1}R^{T} & 0 & 0 \\
+(\lfloor \mathbf{\hat{y}}^{(t_1)} - \mathbf{\hat{s}}^{(t_1)}\Delta{t}_1 \rfloor_{\times})({}^{t_1}_{G}R)^{T} & \mathbf{I} & -\mathbf{I}\Delta{t}_1 \\
+\lfloor \mathbf{\hat{s}}^{(t_1)} \rfloor_{\times}({}^{t_1}_{G}R)^{T} & \mathbf{0} & \mathbf{I}
+\end{bmatrix} \\
+&=\begin{bmatrix}
+{}_{t_1}^{t_2}R & 0 & 0 \\
+-\lfloor \mathbf{\hat{y}}^{(t_2)}-\mathbf{\hat{y}}^{(t_1)}+\mathbf{\hat{s}}^{(t_1)}\Delta{t}_1- \mathbf{\hat{s}}^{(t_1)}\Delta{t}_2 \rfloor_{\times}({}^{t_1}_{G}R)^{T} & \mathbf{I} & \mathbf{I}(\Delta{t}_2-\Delta{t}_1） \\
+-\lfloor \mathbf{\hat{s}}^{(t_2)}-\mathbf{\hat{s}}^{(t_1)} \rfloor_{\times}({}^{t_1}_{G}R)^{T} & \mathbf{0} & \mathbf{I}
+\end{bmatrix} \\
+&=
+\end{aligned}
+$$
