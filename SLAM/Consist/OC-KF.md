@@ -378,8 +378,104 @@ $$
 \end{array}
 \end{bmatrix} \tag{16}
 $$
-根据能观性矩阵的定义，在 t 时刻，第$l$个节点对 $f_j$ 特征点的能观性矩阵的对应行：
+根据能观性矩阵的定义，在 t 时刻，对 $f_j$ 特征点的能观性矩阵的对应行：
 $$
-\mathcal{O}_{l}^{(t)}=\mathbf{H}_{f_j}\Phi(t, t_0) \tag{17}
+\mathcal{O}_{t}=\mathbf{H}_{f_j}\Phi(t, t_0) \tag{17}
 $$
-所以
+所以在 t 时刻，系统的零空间满足：
+$$
+\mathcal{O}_{t}\mathbf{N}_t=\mathbf{H}_{f_j}\underbrace{\Phi(t, t_0)\mathbf{N}_{t_0}}_{part1} \tag{18}
+$$
+将公式（10）和公式（16）带入到公式（18）的part1中，可以得到（在系统的传播或者说预测阶段不涉及到观测部分，所以观测部分的零空间照抄上去就好了）：
+$$
+\begin{aligned}
+\Phi(t,t_0)\mathbf{N}_{t_0}&=\begin{bmatrix}
+{}_{t_0}^{t}R & 0 & 0 \\
+-\lfloor \mathbf{{y}}^{(t)} \rfloor_{\times}({}^{t_0}_{G}R)^{T} & \mathbf{I} & \mathbf{I}\Delta{t} \\
+-\lfloor \mathbf{{s}}^{(t)} \rfloor_{\times}({}^{t_0}_{G}R)^{T} & \mathbf{0} & \mathbf{I}
+\end{bmatrix}
+\begin{bmatrix}
+\mathbf{0} & {}^{t_0}_{G}R\mathbf{g} \\
+\mathbf{I} & -\lfloor {}^{G}p_{t_0} \rfloor_{\times}\mathbf{g} \\
+\mathbf{0} & -\lfloor {}^{G}v_{t_0} \rfloor_{\times}\mathbf{g} \\ \hline
+\mathbf{I} & -\lfloor {}^{G}p_{f_j} \rfloor_{\times}\mathbf{g}
+\end{bmatrix} \\
+&=\begin{bmatrix}
+\mathbf{0} & {}^{t}_{G}R\mathbf{g} \\
+\mathbf{I} & -\lfloor {}^{G}p_{t} \rfloor_{\times}\mathbf{g} \\
+\mathbf{0} & -\lfloor {}^{G}v_{t} \rfloor_{\times}\mathbf{g} \\ \hline
+\mathbf{I} & -\lfloor {}^{G}p_{f_j} \rfloor_{\times}\mathbf{g}
+\end{bmatrix}
+\end{aligned} \tag{19}
+$$
+可以看到在理想情况下，系统的零空间从在 t 时刻和初始时刻 t0 的零空间还是颇为相似的。需要注意的是在实际情况下，公式（19）中的变量均是由 t-1 时刻的值预测出来的。
+
+&nbsp;
+
+### 相邻时刻间系统的零空间是如何传播的
+
+另一方面 ，t1 到 t2 时刻的系统零空间满足：
+$$
+\begin{aligned}
+\Phi(t_2, t_1)\mathbf{N}_{t_1}&=
+\begin{bmatrix}
+{}_{t_1}^{t_2}R & 0 & 0 \\
+-\lfloor {}^{G}p_{t_2}-{}^{G}p_{t_1}-{}^{G}v_{t_1}\Delta{t}_{1}^{2}+\frac{1}{2}\mathbf{g}(\Delta{t}_{1}^{2})^2 \rfloor_{\times}({}^{t_1}_{G}R)^{T} & \mathbf{I} & \mathbf{I}(\Delta{t}_{1}^{2}) \\
+-\lfloor {}^{G}v_{t_2}-{}^{G}v_{t_1}+\mathbf{g}\Delta{t}_{1}^{2} \rfloor_{\times}({}^{t_1}_{G}R)^{T} & \mathbf{0} & \mathbf{I}
+\end{bmatrix} 
+\begin{bmatrix}
+\mathbf{0} & {}^{t_1}_{G}R\mathbf{g} \\
+\mathbf{I} & -\lfloor {}^{G}p_{t_1} \rfloor_{\times}\mathbf{g} \\
+\mathbf{0} & -\lfloor {}^{G}v_{t_1} \rfloor_{\times}\mathbf{g}
+\end{bmatrix} \\
+&= \begin{bmatrix}
+\mathbf{0} & {}^{t_2}_{G}R\mathbf{g} \\
+\mathbf{I} & -\lfloor {}^{G}p_{t_2} \rfloor_{\times}\mathbf{g} \\
+\mathbf{0} & -\lfloor {}^{G}v_{t_2} \rfloor_{\times}\mathbf{g} \\
+\end{bmatrix}
+\end{aligned}  \tag{20}
+$$
+
+&nbsp;
+
+### t 时刻传播过来的零空间是否是观测矩阵的零空间
+
+在 t 时刻，观测矩阵为：
+$$
+\begin{aligned}
+\mathbf{H}_{t}&=J_{f_j}{}^{C}_{I}R{}_{G}^{t}R\begin{bmatrix} 
+\begin{array}{ccc|c}
+\underbrace{\left[{}^{G}\mathrm{p}_{f_j}-{}^{G}\mathrm{p}_{t}\right]_{\times}({}_{G}^{t}R)^{T}}_{{\partial e}/{\partial \theta}} & \underbrace{ -\mathbf{I}_{3\times3}}_{{\partial e}/{\partial \mathrm{p}}} & \underbrace{ \mathbf{0}_{3\times3}}_{{\partial e}/{\partial \mathrm{v}}} & \underbrace{\mathbf{I}_{3\times3}}_{\partial e/\partial p_{f_j}}
+\end{array}
+\end{bmatrix} 
+\end{aligned} \tag{21}
+$$
+结合公式（19）易得：
+$$
+\begin{aligned}
+\mathbf{H}_{t}\mathbf{N}_{t}&=
+\begin{bmatrix} 
+\left[{}^{G}\mathrm{p}_{f_j}-{}^{G}\mathrm{p}_{t}\right]_{\times}({}_{G}^{t}R)^{T} &  -\mathbf{I}_{3\times3} & \mathbf{0}_{3\times3} & \mathbf{I}_{3\times3}
+\end{bmatrix}
+\begin{bmatrix}
+\mathbf{0} & {}^{t}_{G}R\mathbf{g} \\
+\mathbf{I} & -\lfloor {}^{G}p_{t} \rfloor_{\times}\mathbf{g} \\
+\mathbf{0} & -\lfloor {}^{G}v_{t} \rfloor_{\times}\mathbf{g} \\
+\mathbf{I} & -\lfloor {}^{G}p_{f_j} \rfloor_{\times}\mathbf{g}
+\end{bmatrix} \\
+&= \mathbf{0}
+\end{aligned}
+$$
+&nbsp;
+
+### 小结
+
+由上述分析可知，在理想情况下：
+
+1. 系统的零空间可以通过状态转移矩阵传播到当前时刻 t，且形式与初始零空间相似，由 t 时刻状态的预测值有关；
+2. 通过状态传递矩阵传播到当前时刻 t 的零空间与观测矩阵正交，亦即优化问题的优化方向与零空间正交，因此优化量不会影响零空间；
+
+&nbsp;
+
+----
+
