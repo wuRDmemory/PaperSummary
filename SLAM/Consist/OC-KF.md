@@ -473,9 +473,87 @@ $$
 由上述分析可知，在理想情况下：
 
 1. 系统的零空间可以通过状态转移矩阵传播到当前时刻 t，且形式与初始零空间相似，由 t 时刻状态的预测值有关；
-2. 通过状态传递矩阵传播到当前时刻 t 的零空间与观测矩阵正交，亦即优化问题的优化方向与零空间正交，因此优化量不会影响零空间；
+2. 通过状态传递矩阵传播到当前时刻 t 的零空间与观测矩阵正交，亦即优化问题的优化方向与零空间正交，因此优化量不会破坏系统的零空间；
 
 &nbsp;
 
 ----
+
+## OC-KF对于零空间的处理
+
+> Notation:
+>
+> 一下均是从实际情况出发了。
+
+### OC-KF想做什么？
+
+首先笔者个人认为OC-KF是一个比较理想的模型，其特点为：
+
+1. 状态变量中仅有IMU的位姿以及空间中特征点的位置，不像MSCKF有一个滑动窗口记录所有的相机位姿，所以某个时刻的位姿一旦被优化了，那么该位姿的观测方程的线性化点就确定了，后面不会改变，这是和MSCKF的很大的不同；
+2. 由公式（16）～（19）的分析，OC-KF认为，在 t 时刻之前，系统的预测与更新使得状态值接近于理想状态；
+
+第一个特点比较容易理解，跟EKF-Base的方法基本一致；
+
+第二个特点笔者认为是整个算法的核心思想，因为算法认为 t 时刻之前已经达到了理想状态，所以在 t 时刻，该优化问题所要维护的在能观性矩阵中的项为：
+$$
+\hat{\mathcal{O}}_{t}=\hat{\mathbf{H}}_{f_j}\hat{\Phi}(t,t-1)\underbrace{\Phi(t-1,t_0)}_{optimal^{*}} \tag{22}
+$$
+其中$optimal^{*}$表示算法认为之前的处理已经趋于理想情况了。
+
+于是该次优化问题需要注意的就是$\hat{\mathbf{H}}_{f_j}\hat{\Phi}(t,t-1)$依旧的零空间依旧是 t-1 时刻的零空间，即：
+$$
+\begin{aligned}
+\hat{\mathbf{H}}_{f_j}\hat{\Phi}(t,t-1)\mathbf{N}_{t-1} &=\mathbf{0} \\
+\mathbf{N}_{t-1}&=
+\begin{bmatrix}
+\mathbf{0} & {}^{t-1}_{G}R^{(t-2)}\mathbf{g} \\
+\mathbf{I} & -\lfloor {}^{G}p_{t-1}^{(t-2)} \rfloor_{\times}\mathbf{g} \\
+\mathbf{0} & -\lfloor {}^{G}v_{t-1}^{(t-2)} \rfloor_{\times}\mathbf{g} \\
+\mathbf{I} & -\lfloor {}^{G}p_{f_j} \rfloor_{\times}\mathbf{g}
+\end{bmatrix}
+\end{aligned} \tag{23}
+$$
+其中需要说明的是 t-1 时刻的零空间中的变量均是使用 t-2 时刻的值**预测出来**的，因为是由状态转移矩阵传播过来的，所以必须用预测出来的值。
+
+至此需要分为两个部分来使得公式（23）成立： 
+
+1. 修改状态转移矩阵$\hat{\Phi}(t, t-1)$，使得后续的零空间依旧满足通式：
+   $$
+   \mathbf{N}_{t}=
+   \begin{bmatrix}
+   \mathbf{0} & {}^{t}_{G}R^{(t-1)}\mathbf{g} \\
+   \mathbf{I} & -\lfloor {}^{G}p_{t}^{(t-1)} \rfloor_{\times}\mathbf{g} \\
+   \mathbf{0} & -\lfloor {}^{G}v_{t}^{(t-1)} \rfloor_{\times}\mathbf{g} \\
+   \mathbf{I} & -\lfloor {}^{G}p_{f_j} \rfloor_{\times}\mathbf{g}
+   \end{bmatrix}
+   =
+   \check{\Phi}(t,t-1)\mathbf{N}_{t-1}=
+   \check{\Phi}(t, t-1)
+   \begin{bmatrix}
+   \mathbf{0} & {}^{t-1}_{G}R^{(t-2)}\mathbf{g} \\
+   \mathbf{I} & -\lfloor {}^{G}p_{t-1}^{(t-2)} \rfloor_{\times}\mathbf{g} \\
+   \mathbf{0} & -\lfloor {}^{G}v_{t-1}^{(t-2)} \rfloor_{\times}\mathbf{g} \\
+   \mathbf{I} & -\lfloor {}^{G}p_{f_j} \rfloor_{\times}\mathbf{g}
+   \end{bmatrix} \tag{24}
+   $$
+   其中$\check{\Phi}(t, t-1)$表示被修改之后的状态转移矩阵；
+
+2. 修改观测矩阵$\hat{\mathbf{H}}_{f_j}$，使之与 t 时刻的零空间满足正交关系：
+   $$
+   \mathbf{0}=\check{\mathbf{H}}_{f_j}\mathbf{N}_t=\check{\mathbf{H}}_{f_j}
+   \begin{bmatrix}
+   \mathbf{0} & {}^{t}_{G}R^{(t-1)}\mathbf{g} \\
+   \mathbf{I} & -\lfloor {}^{G}p_{t}^{(t-1)} \rfloor_{\times}\mathbf{g} \\
+   \mathbf{0} & -\lfloor {}^{G}v_{t}^{(t-1)} \rfloor_{\times}\mathbf{g} \\
+   \mathbf{I} & -\lfloor {}^{G}p_{f_j} \rfloor_{\times}\mathbf{g}
+   \end{bmatrix} \tag{25}
+   $$
+
+&nbsp;
+
+### 修改状态转移矩阵$\hat{\Phi}(t, t-1)$
+
+
+
+
 
