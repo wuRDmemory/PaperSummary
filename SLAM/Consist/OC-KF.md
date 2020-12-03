@@ -101,7 +101,7 @@ $$
 
 ### OC-KF的传递方程
 
-在OC-KF中，IMU部分的传递方程使用的是MSCKF1.0中的微分方程的形式，这里先来推导状态转移矩阵的闭式解。
+在OC-KF中，IMU部分的传递方程使用的是MSCKF1.0中的微分方程的形式，这里先来推导状态转移矩阵的闭式解。请读者耐心看完理想情况下的推导过程，因为整个OC-KF的核心思路就是由该推导启发的。
 
 > Notation：
 >
@@ -492,7 +492,12 @@ $$
 
 通过上面对理想情况的分析，OC-KF建立的一个比较理想化的方法，该方法把上述的三个性质使用的淋漓尽致：
 
-1. OC-KF认为，在 t 时刻，之前的状态都已经通过最优化的方法求得了最优解，那么使用性质一，初始的零空间可以通过$\hat{\Phi}(t-1, t_0)$传导到 t-1 时刻，写作：
+1. 在时刻 t 构成的能观性矩阵中的项目为：
+   $$
+   \hat{\mathcal{O}}_{t}=\hat{\mathbf{H}}_{f_j}\hat{\Phi}(t,t-1)\hat{\Phi}(t-1,t-2)\dots\hat{\Phi}(t_1, t_0) \tag{22}
+   $$
+   
+2. OC-KF认为，在 t 时刻，之前的状态都已经通过最优化的方法求得了最优解，那么使用性质一，t0 时刻的零空间可以通过$\hat{\Phi}(t-1, t_0)$传播到 t-1 时刻，写作：
    $$
    \mathbf{N}_{t-1}=
    \begin{bmatrix}
@@ -500,30 +505,13 @@ $$
    \mathbf{I} & -\lfloor {}^{G}p_{t-1}^{(t-2)} \rfloor_{\times}\mathbf{g} \\
    \mathbf{0} & -\lfloor {}^{G}v_{t-1}^{(t-2)} \rfloor_{\times}\mathbf{g} \\ \hline
    \mathbf{I} & -\lfloor {}^{G}p_{f_j} \rfloor_{\times}\mathbf{g}
-   \end{bmatrix}   \tag{22A}
+   \end{bmatrix}
+   =\underbrace{\Phi(t-1,t_0)}_{optimal^{*}}\mathbf{N}_{t_0} \tag{23}
    $$
-   
 
-2. 对于 t 时刻的状态转移矩阵$\hat{\Phi}(t, t-1)$而言，根据性质二，该状态转移矩阵必然可以将零空间$\mathbf{N}_{t-1}$传播为$\mathbf{N}_t$，且形式上满足通用形式：
+   其中$optimal^{*}$表示算法认为之前的处理已经趋于理想情况了；其中的 t-1 时刻的零空间是由状态转移矩阵传播过来的，所以零空间中的变量均是使用 t-2 时刻的值**预测出来**的；
 
-$$
-\hat{\mathcal{O}}_{t}=\hat{\mathbf{H}}_{f_j}\hat{\Phi}(t,t-1)\underbrace{\Phi(t-1,t_0)}_{optimal^{*}} \tag{22}
-$$
-​	3. 
-
-其中$optimal^{*}$表示算法认为之前的处理已经趋于理想情况了。
-
-于是该次优化问题需要注意的就是$\hat{\mathbf{H}}_{f_j}\hat{\Phi}(t,t-1)$依旧的零空间依旧是 t-1 时刻的零空间，即：
-$$
-\begin{aligned}
-\hat{\mathbf{H}}_{f_j}\hat{\Phi}(t,t-1)\mathbf{N}_{t-1} &=\mathbf{0} \\
-\end{aligned} \tag{23}
-$$
-其中需要说明的是 t-1 时刻的零空间中的变量均是使用 t-2 时刻的值**预测出来**的，因为是由状态转移矩阵传播过来的，所以必须用预测出来的值。
-
-至此需要分为两个部分来使得公式（23）成立： 
-
-1. 修改状态转移矩阵$\hat{\Phi}(t, t-1)$，使得后续的零空间依旧满足通式：
+3. 对于 t 时刻的状态转移矩阵$\hat{\Phi}(t, t-1)$而言，根据性质二，该状态转移矩阵必然可以将零空间$\mathbf{N}_{t-1}$传播为$\mathbf{N}_t$，且形式上满足通用形式：
    $$
    \mathbf{N}_{t}=
    \begin{bmatrix}
@@ -533,27 +521,29 @@ $$
    \mathbf{I} & -\lfloor {}^{G}p_{f_j} \rfloor_{\times}\mathbf{g}
    \end{bmatrix}
    =
-   \check{\Phi}(t,t-1)\mathbf{N}_{t-1}=
+   \check{\Phi}(t,t-1)\mathbf{N}_{t-1}
+   =
    \check{\Phi}(t, t-1)
    \begin{bmatrix}
    \mathbf{0} & {}^{t-1}_{G}R^{(t-2)}\mathbf{g} \\
    \mathbf{I} & -\lfloor {}^{G}p_{t-1}^{(t-2)} \rfloor_{\times}\mathbf{g} \\
    \mathbf{0} & -\lfloor {}^{G}v_{t-1}^{(t-2)} \rfloor_{\times}\mathbf{g} \\
    \mathbf{I} & -\lfloor {}^{G}p_{f_j} \rfloor_{\times}\mathbf{g}
-   \end{bmatrix} \tag{24}
+   \end{bmatrix}\tag{24}
    $$
-   其中$\check{\Phi}(t, t-1)$表示被修改之后的状态转移矩阵；
+   
 
-2. 修改观测矩阵$\hat{\mathbf{H}}_{f_j}$，使之与 t 时刻的零空间满足正交关系：
-   $$
-   \mathbf{0}=\check{\mathbf{H}}_{f_j}\mathbf{N}_t=\check{\mathbf{H}}_{f_j}
-   \begin{bmatrix}
-   \mathbf{0} & {}^{t}_{G}R^{(t-1)}\mathbf{g} \\
-   \mathbf{I} & -\lfloor {}^{G}p_{t}^{(t-1)} \rfloor_{\times}\mathbf{g} \\
-   \mathbf{0} & -\lfloor {}^{G}v_{t}^{(t-1)} \rfloor_{\times}\mathbf{g} \\
-   \mathbf{I} & -\lfloor {}^{G}p_{f_j} \rfloor_{\times}\mathbf{g}
-   \end{bmatrix} \tag{25}
-   $$
+   其中 t 时刻的零空间是由 t-1 时刻的零空间经由相邻时间的状态转移矩阵传播过来的，因此也是使用预测值；公式中使用$\check{\Phi}$来表示期望的传递矩阵。
+
+4. 对于 t 时刻的观测矩阵$\hat{\mathbf{H}}(t)$，根据性质三，该观测矩阵要与零空间$\mathbf{N}_t$正交：
+
+$$
+\check{\mathbf{H}}_{f_j}\mathbf{N}_{t} =\mathbf{0} \tag{25}
+$$
+
+分析到这里其实就比较明确了，OC-KF的**核心就是期望找到合适的状态转移矩阵和合适的观测矩阵，使得零空间的传播和优化方向与理想情况下的相同**。
+
+下面其实就可以针对公式（24）（25）进行分析了。
 
 &nbsp;
 
@@ -632,8 +622,8 @@ $$
    $$
    \begin{aligned}
    \mathop{max}_{\alpha} \mathop{min}_{\check{\Phi}} &\quad \underbrace{ \left\| \check{\Phi}-\hat{\Phi} \right\|_{\mathcal{F}}^{2}}_{f(\check{\Phi})}+\underbrace{\alpha(\check{\Phi}\mathrm{u}-\mathrm{w})}_{g(\check{\Phi})} \\
-   s.t. &\quad \frac{\partial f(\check{\Phi})}{\partial \check{\Phi}}+\alpha \frac{\partial g(\check{\Phi})}{\partial \check{\Phi}}=2(\check{\Phi}-\hat{\Phi})+\alpha\mathrm{u}= 0 \\
-   &\quad \check{\Phi}\mathrm{u}-\mathrm{w} = 0
+   s.t. &\quad \frac{\partial f(\check{\Phi})}{\partial \check{\Phi}}+\alpha \frac{\partial g(\check{\Phi})}{\partial \check{\Phi}}=2(\check{\Phi}-\hat{\Phi})+\alpha\mathrm{u}= 0 \quad \text{约束1} \\  
+   &\quad \check{\Phi}\mathrm{u}-\mathrm{w} = 0 \quad \text{约束2}
    \end{aligned} \tag{32}
    $$
    
@@ -648,7 +638,7 @@ $$
    $$
    \check{\Phi}=\hat{\Phi}-(\hat{\Phi}\mathrm{u}-\mathrm{w})(\mathrm{u}^{T}\mathrm{u})^{-1}\mathrm{u}^{T} \tag{34}
    $$
-   最后的转置是为了维度的适配，该最优解带入KKT条件的约束 2 可得：
+   最后的 u 取转置是为了维度的适配，该最优解带入KKT条件的约束 2 可得：
    $$
    \begin{aligned}
    \check{\Phi}\mathrm{u}-\mathrm{w}&=(\hat{\Phi}-(\hat{\Phi}\mathrm{u}-\mathrm{w})(\mathrm{u}^{T}\mathrm{u})^{-1}\mathrm{u}^T)\mathrm{u}-\mathrm{w} \\
@@ -657,7 +647,7 @@ $$
    \end{aligned} \tag{35}
    $$
    
-   于是公式（34）就是原始问题的最优解；
+   于是公式（34）满足KKT条件，对偶问题的最优解就是原始问题的最优解；
 
 将公式（29）和公式（34）所得到的部分带入到公式（26）中就可以得到修改之后的状态转移矩阵，该矩阵为：
 $$
@@ -670,9 +660,71 @@ $$
 $$
 &nbsp;
 
-----
-
 ### 修改观测矩阵$\hat{\mathbf{H}}(t)$
 
+修改过状态转移矩阵之后，t 时刻的零空间如公式（27）左边部分所示，所以我们需要找到最优的观测矩阵$\check{\mathbf{H}}(t)$，使之满足公式（25）：
+$$
+\begin{aligned}
+\check{\mathbf{H}}_{f_j}\mathbf{N}_{t} = 
+\begin{bmatrix}\begin{array}{ccc|c}
+\mathbf{H}_{\tilde{\theta}} & \mathbf{H}_{\tilde{p}} & \mathbf{H}_{\tilde{v}} & \mathbf{H}_{f_j}
+\end{array}\end{bmatrix}
+\begin{bmatrix}
+\mathbf{0} & {}^{t}_{G}R^{(t-1)}\mathbf{g} \\
+\mathbf{I} & -\lfloor {}^{G}p_{t}^{(t-1)} \rfloor_{\times}\mathbf{g} \\
+\mathbf{0} & -\lfloor {}^{G}v_{t}^{(t-1)} \rfloor_{\times}\mathbf{g} \\ \hline
+\mathbf{I} & -\lfloor {}^{G}p_{f_j} \rfloor_{\times}\mathbf{g}
+\end{bmatrix}
+\end{aligned} \tag{37}
+$$
 
+由零空间的第一列可以得到$\mathbf{H}_{f_j}=-\mathbf{H}_{\tilde{\theta}}$，该结论很重要，它指示了当算法修改了前面的观测矩阵元素时，对应的点的元素也要修改！不过这里也提供了一些方便，我们可以仅仅关注前三个元素，当求出位置的元素之后可以直接替换掉点的元素部分。
+
+于是重点其实还是在第二行，作者和修改状态转移矩阵一样，也是构建了一个最优化问题进行求解：
+$$
+\begin{aligned}
+\mathop{min}_{\check{\mathbf{H}}} &\quad \left\| \check{\mathbf{H}} - \hat{\mathbf{H}} \right\|^{2}_{\mathcal{F}} \\
+s.t. &\quad \check{\mathbf{H}}\mathbf{u}=\mathbf{0}
+\end{aligned} \tag{38}
+$$
+其中：
+
+- $\check{\mathbf{H}}$表示要求解的最优值；
+
+- $\hat{\mathbf{H}}$表示实际的观测矩阵，如下：
+  $$
+  H_{t}=J_{f_j}^{(t)} \quad {}^{C}_{I}R \quad {}_{G}^{I_t}R^{(t-1)}\begin{bmatrix} \underbrace{\left[{}^{G}\hat{\mathrm{p}}_{f_j}-{}^{G}\hat{\mathrm{p}}_{I_t}^{(t-1)}\right]_{\times}({}_{G}^{I_t}R^{(t-1)})^{T}}_{\mathbf{H}_{\theta}} & \underbrace{ -\mathbf{I}_{3\times3}}_{\mathbf{H}_{p}} & \underbrace{ \mathbf{0}_{3\times3}}_{\mathbf{H}_{v}}\end{bmatrix} \tag{39}
+  $$
+
+- $\mathbf{u}$表示零空间中的元素，如下：
+  $$
+  \mathbf{u}=\begin{bmatrix}
+  ({}^{t}_{G}R^{(t-1)}\mathbf{g})^{T} & (-\lfloor {}^{G}p_{t}^{(t-1)} \rfloor_{\times}\mathbf{g})^{T} & (-\lfloor {}^{G}v_{t}^{(t-1)} \rfloor_{\times}\mathbf{g})^{T}
+  \end{bmatrix}^{T} \tag{40}
+  $$
+  
+
+依旧使用拉格朗日乘子法和KKT求得最优解为：
+$$
+\check{\mathbf{H}}=\hat{\mathbf{H}}-(\hat{\mathbf{H}}\mathrm{u}-\mathrm{w})(\mathrm{u}^{T}\mathrm{u})^{-1}\mathrm{u}^{T} \tag{41}
+$$
+&nbsp;
+
+### 小结
+
+从本节的分析可以得知：
+
+1. OC-KF建立了一个比较理想的模型：算法认为 t 时刻之前的状态接近理想状态，因此需要维护的零空间可以按照理想情况从初始时刻传播过来，满足公式（23）；
+2. 在 t 时刻的预测阶段，OC-KF通过修改 t-1 到 t 的状态传递矩阵强制使 t 时刻的零空间满足理想情况下的形式，如公式（27）所示，这一步也使得后面再次进行步骤 1 时能满足必要的条件；
+3. 在 t 时刻的更新阶段，OC-KF通过修改观测矩阵强制试该优化方向与 t 时刻的零空间正交，一方面保证了能观性，**另一方面保证了优化出来的参数变量不会影响 t 时刻的零空间，即还是步骤 2 中的零空间**，使得后面再次进行步骤 1 是能满足必要的条件；
+
+那么随之而来一个问题：这么强制的优化方向如果不好，使之偏离了理想值，那么步骤 1 所依赖的理想条件是不是就有点儿自相矛盾？
+
+> 零空间：有两个小伙子，一个$\check{\Phi}(t, t-1)$，一个$\check{\mathbf{H}}(t)$，上来就是一个拉格朗日乘子法，一个KKT条件，一个矩阵替换，有备而来，不讲武德。来骗，来偷袭我这个t0时刻的老零空间，我劝这两位年轻人耗子尾汁，要讲武德，系统内部不要窝里斗。
+
+&nbsp;
+
+----
+
+## OC-KF方法在MSCKF中的应用
 
