@@ -472,8 +472,9 @@ $$
 
 由上述分析可知，在理想情况下：
 
-1. 系统的零空间可以通过状态转移矩阵传播到当前时刻 t，且形式与初始零空间相似，由 t 时刻状态的预测值有关；
-2. 通过状态传递矩阵传播到当前时刻 t 的零空间与观测矩阵正交，亦即优化问题的优化方向与零空间正交，因此优化量不会破坏系统的零空间；
+1. 性质一：系统的零空间可以通过状态转移矩阵传播到当前时刻 t，且形式与初始零空间相似，由 t 时刻状态的预测值有关；
+2. 性质二：相邻时刻的零空间可以通过状态转移矩阵进行传播，且零空间的形式也满足通用形式；
+3. 性质三：通过状态传递矩阵传播到当前时刻 t 的零空间与观测矩阵正交，亦即优化问题的优化方向与零空间正交，因此优化量不会破坏系统的零空间；
 
 &nbsp;
 
@@ -484,33 +485,38 @@ $$
 > Notation:
 >
 > 一下均是从实际情况出发了。
+>
+> 状态变量中仅有IMU的位姿以及空间中特征点的位置，不像MSCKF有一个滑动窗口记录所有的相机位姿，所以某个时刻的位姿一旦被优化了，**那么该位姿的观测方程的线性化点就确定了**，后面不会改变，这是和MSCKF的很大的不同；
 
 ### OC-KF想做什么？
 
-首先笔者个人认为OC-KF是一个比较理想的模型，其特点为：
+通过上面对理想情况的分析，OC-KF建立的一个比较理想化的方法，该方法把上述的三个性质使用的淋漓尽致：
 
-1. 状态变量中仅有IMU的位姿以及空间中特征点的位置，不像MSCKF有一个滑动窗口记录所有的相机位姿，所以某个时刻的位姿一旦被优化了，那么该位姿的观测方程的线性化点就确定了，后面不会改变，这是和MSCKF的很大的不同；
-2. 由公式（16）～（19）的分析，OC-KF认为，在 t 时刻之前，系统的预测与更新使得状态值接近于理想状态；
+1. OC-KF认为，在 t 时刻，之前的状态都已经通过最优化的方法求得了最优解，那么使用性质一，初始的零空间可以通过$\hat{\Phi}(t-1, t_0)$传导到 t-1 时刻，写作：
+   $$
+   \mathbf{N}_{t-1}=
+   \begin{bmatrix}
+   \mathbf{0} & {}^{t-1}_{G}R^{(t-2)}\mathbf{g} \\
+   \mathbf{I} & -\lfloor {}^{G}p_{t-1}^{(t-2)} \rfloor_{\times}\mathbf{g} \\
+   \mathbf{0} & -\lfloor {}^{G}v_{t-1}^{(t-2)} \rfloor_{\times}\mathbf{g} \\ \hline
+   \mathbf{I} & -\lfloor {}^{G}p_{f_j} \rfloor_{\times}\mathbf{g}
+   \end{bmatrix}   \tag{22A}
+   $$
+   
 
-第一个特点比较容易理解，跟EKF-Base的方法基本一致；
+2. 对于 t 时刻的状态转移矩阵$\hat{\Phi}(t, t-1)$而言，根据性质二，该状态转移矩阵必然可以将零空间$\mathbf{N}_{t-1}$传播为$\mathbf{N}_t$，且形式上满足通用形式：
 
-第二个特点笔者认为是整个算法的核心思想，因为算法认为 t 时刻之前已经达到了理想状态，所以在 t 时刻，该优化问题所要维护的在能观性矩阵中的项为：
 $$
 \hat{\mathcal{O}}_{t}=\hat{\mathbf{H}}_{f_j}\hat{\Phi}(t,t-1)\underbrace{\Phi(t-1,t_0)}_{optimal^{*}} \tag{22}
 $$
+​	3. 
+
 其中$optimal^{*}$表示算法认为之前的处理已经趋于理想情况了。
 
 于是该次优化问题需要注意的就是$\hat{\mathbf{H}}_{f_j}\hat{\Phi}(t,t-1)$依旧的零空间依旧是 t-1 时刻的零空间，即：
 $$
 \begin{aligned}
 \hat{\mathbf{H}}_{f_j}\hat{\Phi}(t,t-1)\mathbf{N}_{t-1} &=\mathbf{0} \\
-\mathbf{N}_{t-1}&=
-\begin{bmatrix}
-\mathbf{0} & {}^{t-1}_{G}R^{(t-2)}\mathbf{g} \\
-\mathbf{I} & -\lfloor {}^{G}p_{t-1}^{(t-2)} \rfloor_{\times}\mathbf{g} \\
-\mathbf{0} & -\lfloor {}^{G}v_{t-1}^{(t-2)} \rfloor_{\times}\mathbf{g} \\
-\mathbf{I} & -\lfloor {}^{G}p_{f_j} \rfloor_{\times}\mathbf{g}
-\end{bmatrix}
 \end{aligned} \tag{23}
 $$
 其中需要说明的是 t-1 时刻的零空间中的变量均是使用 t-2 时刻的值**预测出来**的，因为是由状态转移矩阵传播过来的，所以必须用预测出来的值。
@@ -553,7 +559,120 @@ $$
 
 ### 修改状态转移矩阵$\hat{\Phi}(t, t-1)$
 
+实际情况下，t-1 时刻到 t 时刻的状态转移矩阵为：
+$$
+\hat{\Phi}(t, t-1)=exp(\mathbf{F}(t, t-1)\Delta{t})=
+\begin{bmatrix}
+\hat{\Phi}_{11} & \mathbf{0} & \mathbf{0} \\
+\hat{\Phi}_{21} & \mathbf{I} & \mathbf{I}\Delta{t} \\
+\hat{\Phi}_{31} & \mathbf{0} & \mathbf{I}
+\end{bmatrix} \tag{26}
+$$
+根据公式（24）有：
+$$
+\mathbf{N}_{t}=
+\begin{bmatrix}
+\mathbf{0} & {}^{t}_{G}R^{(t-1)}\mathbf{g} \\
+\mathbf{I} & -\lfloor {}^{G}p_{t}^{(t-1)} \rfloor_{\times}\mathbf{g} \\
+\mathbf{0} & -\lfloor {}^{G}v_{t}^{(t-1)} \rfloor_{\times}\mathbf{g} \\ \hline
+\mathbf{I} & -\lfloor {}^{G}p_{f_j} \rfloor_{\times}\mathbf{g}
+\end{bmatrix}=
+\begin{bmatrix}
+\check{\Phi}_{11} & \mathbf{0} & \mathbf{0} \\
+\check{\Phi}_{21} & \mathbf{I} & \mathbf{I}\Delta{t} \\
+\check{\Phi}_{31} & \mathbf{0} & \mathbf{I}
+\end{bmatrix}
+\begin{bmatrix}
+\mathbf{0} & {}^{t-1}_{G}R^{(t-2)}\mathbf{g} \\
+\mathbf{I} & -\lfloor {}^{G}p_{t-1}^{(t-2)} \rfloor_{\times}\mathbf{g} \\
+\mathbf{0} & -\lfloor {}^{G}v_{t-1}^{(t-2)} \rfloor_{\times}\mathbf{g} \\ \hline
+\mathbf{I} & -\lfloor {}^{G}p_{f_j} \rfloor_{\times}\mathbf{g}
+\end{bmatrix} \tag{27}
+$$
+这里依旧只考虑IMU状态量，也就是矩阵横线下面特征点部分不考虑。
 
+把公式（27）各项展开有：
+$$
+\begin{aligned}
+\begin{cases}
+{}^{t}_{G}R^{(t-1)}\mathbf{g} 
+&= \check{\Phi}_{11} {}^{t-1}_{G}R^{(t-2)}\mathbf{g} \\
+-\lfloor {}^{G}p_{t}^{(t-1)} \rfloor_{\times}\mathbf{g} 
+&= \check{\Phi}_{21}{}^{t-1}_{G}R^{(t-2)}\mathbf{g}-\lfloor {}^{G}p_{t-1}^{(t-2)} \rfloor_{\times}\mathbf{g} - \lfloor {}^{G}v_{t-1}^{(t-2)} \Delta{t} \rfloor_{\times}\mathbf{g}\\
+-\lfloor {}^{G}v_{t}^{(t-1)} \rfloor_{\times}\mathbf{g} 
+&= \check{\Phi}_{31}{}^{t-1}_{G}R^{(t-2)}\mathbf{g}-\lfloor {}^{G}v_{t-1}^{(t-2)} \rfloor_{\times}\mathbf{g}
+\end{cases}
+\end{aligned} \tag{28}
+$$
+公式（28）中第一行很容易求解：
+$$
+\check{\Phi}_{11}={}^{t}_{G}R^{(t-1)}({}^{t-1}_{G}R^{(t-2)})^{T} \tag{29}
+$$
+第二行和第三行在求解的时候，作者构建了一个最优化问题，该问题满足如下公式：
+$$
+\begin{aligned}
+\mathop{min}_{\check{\Phi}} &\quad \left\| \check{\Phi}-\hat{\Phi} \right\|_{\mathcal{F}}^{2} \\
+s.t. &\quad \check{\Phi}\mathrm{u}=\mathrm{w}
+\end{aligned} \tag{30}
+$$
+其中：
+
+1. 对于第二行和第三行，$\mathrm{u}={}^{t-1}_{G}R^{(t-2)}$；
+2. 对于第二行，$\mathrm{w}=\lfloor {}^{G}p_{t-1}^{(t-2)}+{}^{G}v_{t-1}^{(t-2)}\Delta{t}-{}^{G}p_{t}^{(t-1)} \rfloor_{\times}$；
+3. 对于第三行，$\mathrm{w}=\lfloor {}^{G}v_{t-1}^{(t-2)}-{}^{G}v_{t}^{(t-1)} \rfloor_{\times}$；
+
+对于公式（30）所示的优化问题而言，采用拉格朗日乘子法和KKT条件求解对偶问题，详细步骤如下：
+
+1. 构建拉格朗日函数$L(\check{\Phi}, \alpha)=\left\| \check{\Phi}-\hat{\Phi} \right\|_{\mathcal{F}}^{2}+\alpha(\check{\Phi}\mathrm{u}-\mathrm{w})$；则原始问题为：
+   $$
+   \mathop{min}_{\check{\Phi}} \mathop{max}_{\alpha} \underbrace{ \left\| \check{\Phi}-\hat{\Phi} \right\|_{\mathcal{F}}^{2}+\alpha(\check{\Phi}\mathrm{u}-\mathrm{w})}_{ L(\check{\Phi}, \alpha)} \tag{31}
+   $$
+
+2. 在满足KKT条件下（因为只涉及到等式约束，所以KKT条件只满足等式约束和梯度约束就可以了）求解原始问题的对偶问题：
+   $$
+   \begin{aligned}
+   \mathop{max}_{\alpha} \mathop{min}_{\check{\Phi}} &\quad \underbrace{ \left\| \check{\Phi}-\hat{\Phi} \right\|_{\mathcal{F}}^{2}}_{f(\check{\Phi})}+\underbrace{\alpha(\check{\Phi}\mathrm{u}-\mathrm{w})}_{g(\check{\Phi})} \\
+   s.t. &\quad \frac{\partial f(\check{\Phi})}{\partial \check{\Phi}}+\alpha \frac{\partial g(\check{\Phi})}{\partial \check{\Phi}}=2(\check{\Phi}-\hat{\Phi})+\alpha\mathrm{u}= 0 \\
+   &\quad \check{\Phi}\mathrm{u}-\mathrm{w} = 0
+   \end{aligned} \tag{32}
+   $$
+   
+3. 将约束 1 推得的$\check{\Phi}=\hat{\Phi}-\frac{1}{2}\alpha\mathrm{u}$带入到对偶问题中得到：
+   $$
+   \begin{aligned}
+   \mathop{max}_{\alpha} &\quad 
+   -\frac{1}{4}\alpha^{2}\mathrm{u}^T\mathrm{u}+\alpha(\hat{\Phi}\mathrm{u}-\mathrm{w})
+   \end{aligned} \tag{33}
+   $$
+   对$\alpha$求导为0可得$\alpha=2(\hat{\Phi}\mathrm{u}-\mathrm{w})(\mathrm{u}^{T}\mathrm{u})^{-1}$，将结果带入约束 1 的推论中可得：
+   $$
+   \check{\Phi}=\hat{\Phi}-(\hat{\Phi}\mathrm{u}-\mathrm{w})(\mathrm{u}^{T}\mathrm{u})^{-1}\mathrm{u}^{T} \tag{34}
+   $$
+   最后的转置是为了维度的适配，该最优解带入KKT条件的约束 2 可得：
+   $$
+   \begin{aligned}
+   \check{\Phi}\mathrm{u}-\mathrm{w}&=(\hat{\Phi}-(\hat{\Phi}\mathrm{u}-\mathrm{w})(\mathrm{u}^{T}\mathrm{u})^{-1}\mathrm{u}^T)\mathrm{u}-\mathrm{w} \\
+   &=\hat{\Phi}\mathrm{u}-\mathrm{w}-(\hat{\Phi}\mathrm{u}-\mathrm{w}) \\
+   &=\mathbf{0}
+   \end{aligned} \tag{35}
+   $$
+   
+   于是公式（34）就是原始问题的最优解；
+
+将公式（29）和公式（34）所得到的部分带入到公式（26）中就可以得到修改之后的状态转移矩阵，该矩阵为：
+$$
+\check{\Phi}(t, t-1)=
+\begin{bmatrix}
+{}^{t}_{G}R^{(t-1)}({}^{t-1}_{G}R^{(t-2)})^{T} & \mathbf{0} & \mathbf{0} \\
+\check{\Phi}_{21} & \mathbf{I} & \mathbf{I}\Delta{t} \\
+\check{\Phi}_{31} & \mathbf{0} & \mathbf{I}
+\end{bmatrix} \tag{36}
+$$
+&nbsp;
+
+----
+
+### 修改观测矩阵$\hat{\mathbf{H}}(t)$
 
 
 
