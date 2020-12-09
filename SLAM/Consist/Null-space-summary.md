@@ -216,5 +216,32 @@ $$
 $$
 除此之外，年轻人也在推导过程中总结出了一个很重要的规律：**之所以乘积最后能满足公式（10）所示的零空间，其比较重要的原因在于在乘积过程中，所有的位姿和速度都用的是一个值（在理想情况下，都使用的是理想值），这保证了相同项之间可以互相抵消。**
 
-于是年轻人回想自己的推导过程，因为在自己的系统中，整个系统维护了一个滑动窗口，该窗口内记录了一段时间内的位姿数据，该数据会因为新观测的到来而被更新，导致后续在构建观测矩阵时一直使用的是最新的值，**也就是同样的位姿和速度，使用了两个时刻的值**，这样的方法使得推导过程中增加好很多因为使用不同时刻值的扰动项！形式如下：
+于是年轻人回想自己的推导过程，因为在自己的系统中，整个系统维护了一个滑动窗口，该窗口内记录了一段时间内的位姿数据，该数据会因为新观测的到来而被更新，导致后续在构建观测矩阵时一直使用的是最新的值，**也就是同样的位姿和速度，使用了两个时刻的值**，这样的方法使得推导过程中增加好很多因为使用不同时刻值的扰动项！例如在时刻$\alpha_{i+1}$ ，则对于第 $\ell$ 个节点（假设该节点的预测时刻也为 $\ell$ 时刻）来说形式如下：
+
+$$
+\begin{array}{l}
+\boldsymbol{\Gamma}_{\ell}^{(\alpha_i)}=\left\lfloor^{G} \hat{\mathbf{p}}_{f_{j}}-{ }^{G} \hat{\mathbf{p}}_{t_0}^{(t_0)}-{ }^{G} \hat{\mathbf{v}}_{t_0}^{(t_0)} \Delta t_{\ell}-\frac{1}{2}{ }^{G} \mathbf{g} \Delta t_{\ell}^{2} \times\right\rfloor ({}^{t_0}_{G}\hat{\mathbf{R}}^{(t_0)})^{T}+\Delta \overline{\mathbf{\Gamma}}_{\ell}^{(\alpha_i)} \\
+\mathbf{M}_{\ell}^{(\alpha_i)}=\mathbf{J}_{i, \alpha_i} \cdot{ }_{I}^{C} \mathbf{R} \cdot {}^{\ell}_{G}\hat{\mathbf{R}}^{(\alpha_i)}
+\end{array}
+$$
+
+$$
+\mathcal{O}_{\ell}^{(t)}=\mathbf{M}_{\ell}^{(t)}\left[\mathbf{\Gamma}_{\ell}^{(t)}+\Delta \mathbf{\Gamma}_{\ell}^{(t)} \quad-\mathbf{I}_{3} \quad-\Delta t_{\ell} \mathbf{I}_{3} \quad \mathbf{0}_{3} \quad \cdots \quad \mathbf{I}_{3} \quad \cdots \quad \mathbf{0}_{3}\right] \tag{11}
+$$
+
+其中：
+
+1. $\Gamma$ 的形式应与公式（9）中的理想情况相似：
+   $$
+   \boldsymbol{\Gamma}_{\ell}^{(t)}=\left\lfloor^{G} \hat{\mathbf{p}}_{f_{i}}-{ }^{G} \hat{\mathbf{p}}_{t_0}^{(t_0)}-{ }^{G} \hat{\mathbf{v}}_{t_0}^{(t_0)} \Delta t_{\ell}-\frac{1}{2}{ }^{G} \mathbf{g} \Delta t_{\ell}^{2} \times\right\rfloor ({}^{t_0}_{G}\hat{\mathbf{R}}^{(t_0)})^{T}
+   $$
+
+2. $\Delta{\Gamma}$ 是由于不同时刻线性化造成的扰动项，形式如下：
+   $$
+   \begin{aligned}
+   \Delta \boldsymbol{\Gamma}_{\ell}^{(t)}=&\left(\left\lfloor^{G} \hat{\mathbf{p}}_{f_{j}}-{ }^{G} \hat{\mathbf{p}}_{\ell}^{(\alpha_{i})} \right\rfloor_{\times} \overline{\mathbf{E}}_{\mathbf{q}}+\overline{\mathbf{E}}_{\mathbf{p}}+\sum_{j=t_1}^{\ell-1}\left(\sum_{s=t_1}^{j} \mathbf{E}_{\mathbf{v}}^{s} \Delta t+\mathbf{E}_{\mathbf{p}}^{j}+\right.\right.\\
+   &\left.\left.\sum_{s=t_1} \boldsymbol{\Phi}_{\mathbf{v q}}\left(\hat{\mathbf{x}}_{I_{s+1 \mid s}}, \hat{\mathbf{x}}_{I_{s \mid s}}\right) \hat{\mathbf{R}}_{s \mid s} \mathbf{E}_{\mathbf{q}}^{s} \Delta t+\Phi_{\mathbf{p q}}\left(\hat{\mathbf{x}}_{I_{j+1 \mid j}}, \hat{\mathbf{x}}_{I_{j \mid j}}\right) \hat{\mathbf{R}}_{j \mid j} \mathbf{E}_{\mathbf{q}}^{j}\right)\right) \hat{\mathbf{R}}_{k \mid k}^{T}
+   \end{aligned}
+   $$
+   
 
