@@ -37,6 +37,11 @@
 
 ## EKF-Base方法对零空间的维护
 
+> Notation:
+>
+> 1. 在以下推导中，所有的旋转均使用JPL表示法；
+> 2. 在以下推导中，变量均选择为旋转，位置和速度，即$\mathrm{x}=\begin{bmatrix}{}^{\ell}_{G}q & {}^{G}p_{\ell} & {}^{G}v_{\ell}\end{bmatrix}^{T}$；
+
 从前有两位年轻人都致力于EKF-Base（本文更多的是针对MSCKF方法）方法中能观性的分析，但是都遇到了很大的问题。于是两人约定一起到山上去请教一位德高望重的老师。
 
 老师：你二人既然都是研究能观性的分析，那么一定知道能观性分析的评价标准是能观性矩阵吧？
@@ -56,7 +61,7 @@ $$
 
 第一位年轻人下山之后便回到了家，继续开始对于能观性的分析，他迫不及待的打开第一个锦囊，上面写着一行字和如下的公式：
 
-#### A. 不依赖IMU的运动方程，从头推导理想情况下的状态传递方程
+#### 锦囊1. 不依赖IMU的运动方程，从头推导理想情况下的状态传递方程
 
 $$
 \begin{aligned}
@@ -112,7 +117,7 @@ $$
 
 &nbsp;
 
-#### B. 使用理想的观测矩阵，从前到后推导能观性矩阵中的某一行，总结出零空间应该是怎么样的
+#### 锦囊2. 使用理想的观测矩阵，从前到后推导能观性矩阵中的某一行，总结出零空间应该是怎么样的
 
 年轻人很聪明，他马上把注意力集中在理想情况下的过程，首先他写出了理想情况下的观测矩阵：
 $$
@@ -249,7 +254,7 @@ $$
 
 &nbsp;
 
-#### C. 对同一变量使用第一次预测出的值作为观测方程的线性化点——FEJ
+#### 锦囊3. 对同一变量使用第一次预测出的值作为观测方程的线性化点——FEJ
 
 年轻人从推导理想情况的步骤中得到启发，于是他尝试将同一变量使用同一时刻的值进行实际情况的推导，选择怎样的时刻呢？年轻人有三个选择，以 t 时刻产生的节点为例：
 
@@ -314,7 +319,107 @@ $$
 
 ### Observability-Constraint 方法
 
+时间回到第二个年轻人那里，他下了山只有，并没有直接回家，而是去参加了一个朋友主办的研讨会，会议上他了解到如何求解带约束的最优化问题，这个研讨会在后面帮助了他很多。第二个年轻人也从老师的建议中获取了很多；
 
+#### 锦囊1. 根据IMU运动方程，推导误差状态转移方程的闭式解，并用该理想情况下的转移矩阵传递初始的零空间
 
+根据年轻人之前的研究，根据IMU的运动方程推导得到的误差状态微分方程为：
+$$
+\dot{\tilde{\mathbf{X}}}_{\mathrm{IMU}}=\mathbf{F} \tilde{\mathbf{X}}_{\mathrm{IMU}}+\mathbf{G} \mathbf{n}_{\mathrm{IMU}}  \tag{15}
+$$
+其中：
+$$
+\mathbf{F}=\left[\begin{array}{ccc}
+-\lfloor\hat{\boldsymbol{\omega}} \times\rfloor & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+\mathbf{0}_{3 \times 3} & \mathbf{0}_{3} & \mathbf{I}_{3 \times 3} \\
+-({}_{G}^{I_l}R)^{T}\lfloor\hat{\mathbf{a_m}} \times\rfloor & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+\end{array}\right]
+$$
+这里误差驱动矩阵$\mathbf{G}$不对零空间的分析有贡献，所以暂时就不分析了；
 
+那么根据微分方程，可以得到状态转移方程为：
+$$
+\boldsymbol{\tilde{\mathrm{X}}}\left(t_{l+1}\right)=\boldsymbol{\Phi}\left(t_{l+1}, t_{l}\right) \boldsymbol{\tilde{\mathrm{X}}}\left(t_{l}\right)+\int_{t_{l}}^{t_{l+1}} \boldsymbol{\Phi}\left(t_{l+1}, \tau\right) \boldsymbol{G}(\tau) \boldsymbol{n}(\tau) \mathrm{d} \tau \tag{16}
+$$
+其中：
+$$
+\begin{cases}
+\dot{\boldsymbol{\Phi}}\left(t_{l+1}, t_{l}\right) = \boldsymbol{F}(t)\boldsymbol{\Phi}\left(t_{l+1}, t_{l}\right) \\
+\boldsymbol{\Phi}\left(t_{l+1}, t_{l}\right)=\exp(\int_{t_{l}}^{t_{l+1}} \boldsymbol{F}(t) \mathrm{d} t)  
+\end{cases} \tag{17}
+$$
+根据公式（17）可以列出如下公式：
+$$
+\begin{aligned}
+\begin{bmatrix}
+\dot{\Phi}_{11}(t) & \dot{\Phi}_{12}(t) & \dot{\Phi}_{13}(t) \\
+\dot{\Phi}_{21}(t) & \dot{\Phi}_{22}(t) & \dot{\Phi}_{23}(t) \\
+\dot{\Phi}_{31}(t) & \dot{\Phi}_{32}(t) & \dot{\Phi}_{33}(t) \\
+\end{bmatrix}
+&=\left[\begin{array}{ccc}
+-\lfloor{\boldsymbol{\omega}(t)}\rfloor_{\times} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+\mathbf{0}_{3 \times 3} & \mathbf{0}_{3} & \mathbf{I}_{3 \times 3} \\
+-({}^{G}_{t}R)^{T}\lfloor{\mathbf{a_m}(t)}\rfloor_{\times} & \mathbf{0}_{3 \times 3} & \mathbf{0}_{3 \times 3} \\
+\end{array}\right]
+\begin{bmatrix}
+{\Phi}_{11}(t) & {\Phi}_{12}(t) & {\Phi}_{13}(t) \\
+{\Phi}_{21}(t) & {\Phi}_{22}(t) & {\Phi}_{23}(t) \\
+{\Phi}_{31}(t) & {\Phi}_{32}(t) & {\Phi}_{33}(t) \\
+\end{bmatrix} \\
+\begin{bmatrix}
+{\Phi}_{11}(t_0) & {\Phi}_{12}(t_0) & {\Phi}_{13}(t_0) \\
+{\Phi}_{21}(t_0) & {\Phi}_{22}(t_0) & {\Phi}_{23}(t_0) \\
+{\Phi}_{31}(t_0) & {\Phi}_{32}(t_0) & {\Phi}_{33}(t_0) \\
+\end{bmatrix} 
+&= 
+\begin{bmatrix}
+\mathbf{I} & \mathbf{0} & \mathbf{0} \\
+\mathbf{0} & \mathbf{I} & \mathbf{0} \\
+\mathbf{0} & \mathbf{0} & \mathbf{I} \\
+\end{bmatrix}
+\end{aligned} \tag{18}
+$$
+求解上述的微分方程，易得：
+$$
+\boldsymbol{\Phi}\left(t, t_{0}\right)=
+\begin{bmatrix}
+{}_{t_0}^{t}R & 0 & 0 \\
+-\lfloor \mathbf{{y}} \rfloor_{\times}({}^{t_0}_{G}R)^{T} & \mathbf{I} & \mathbf{I}\Delta{t}_{t_0}^{t} \\
+-\lfloor \mathbf{{s}} \rfloor_{\times}({}^{t_0}_{G}R)^{T} & \mathbf{0} & \mathbf{I}
+\end{bmatrix} \tag{19}
+$$
+其中：
+$$
+\begin{cases}
+\mathrm{y} = {}^{G}p_{t}-{}^{G}p_{t_0}-{}^{G}v_{t_0}(t-t_0)+\frac{1}{2}{}^{G}\mathbf{g}(t-t_0)^2 \\
+\mathrm{s} = {}^{G}v_{t}-{}^{G}v_{t_0}+{}^{G}\mathbf{g}\Delta{t}_{t_0}^t \\
+\end{cases} \tag{20}
+$$
+需要特别注意的是上述的推导是建立在初始时刻为 t0 的前提下，且认为初始时刻的转移矩阵为单位阵。
 
+在初始的 t0 时刻，以特征点 $f_j$ 为例的系统能观性矩阵为：
+$$
+\mathcal{O}^{(t_0)}=\left[\mathbf{H}^{(t_0)}_{t_0|f_j}\right]
+$$
+因此得到初始的零空间如下：
+$$
+\mathbf{N}_{t_0}^{(t_0)}=
+\begin{bmatrix}
+\mathbf{0}_{3} & {}^{I_{t_0}}_{G}\mathbf{{R}}^{(t_0)} \mathbf{g} \\
+\mathbf{I}_{3} & -\left[^{G} \mathbf{p}_{t_0}^{(t_0)}\right]_\times{\mathbf{g}} \\
+\mathbf{0}_{3} & -\left[^{G} \mathbf{v}_{t_0}^{(t_0)}\right]_\times{\mathbf{g}} \\ \hline
+\mathbf{I}_{3} & -\left[^{G} \mathbf{p}_{f_j}\right]_\times{\mathbf{g}} \\
+\end{bmatrix} \tag{21}
+$$
+和公式（14）是一样的，于是按照老师的提示，年轻人使用**理想情况**的状态转移矩阵对初始的零空间进行传递，那么在 t 时刻得到：
+$$
+\Phi(t, t_0)\mathbf{N_{t_0}}=\begin{bmatrix}
+\mathbf{0}_{3} & {}^{{t}}_{G}\mathbf{{R}} \mathbf{g} \\
+\mathbf{I}_{3} & -\left[^{G} \mathbf{p}_{t}\right]_\times{\mathbf{g}} \\
+\mathbf{0}_{3} & -\left[^{G} \mathbf{v}_{t}\right]_\times{\mathbf{g}} \\ \hline
+\mathbf{I}_{3} & -\left[^{G} \mathbf{p}_{f_j}\right]_\times{\mathbf{g}} \\
+\end{bmatrix} \tag{22}
+$$
+上述公式中因为假设是在理想情况下，因此去掉了时间的影响。
+
+&nbsp;
