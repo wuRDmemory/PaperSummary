@@ -423,3 +423,164 @@ $$
 上述公式中因为假设是在理想情况下，因此去掉了时间的影响。
 
 &nbsp;
+
+#### 锦囊2. 根据状态转移矩阵，求解相邻时刻间零空间的传递情况
+
+根据公式（19），年轻人很快的求得了相邻时刻的状态转矩矩阵为：
+$$
+\begin{aligned}
+\Phi(t_2, t_1)&=\Phi(t_2, t_0) (\Phi(t_1, t_0))^{-1} \\
+&=\begin{bmatrix}
+{}_{t_0}^{t_2}R & 0 & 0 \\
+-\lfloor \mathbf{{y}}^{(t_2)} \rfloor_{\times}({}^{t_0}_{G}R)^{T} & \mathbf{I} & \mathbf{I}\Delta{t}_2 \\
+-\lfloor \mathbf{{s}}^{(t_2)} \rfloor_{\times}({}^{t_0}_{G}R)^{T} & \mathbf{0} & \mathbf{I}
+\end{bmatrix}
+\begin{bmatrix}
+{}_{t_0}^{t_1}R^{T} & 0 & 0 \\
+(\lfloor \mathbf{{y}}^{(t_1)} - \mathbf{{s}}^{(t_1)}\Delta{t}_1 \rfloor_{\times})({}^{t_1}_{G}R)^{T} & \mathbf{I} & -\mathbf{I}\Delta{t}_1 \\
+\lfloor \mathbf{{s}}^{(t_1)} \rfloor_{\times}({}^{t_1}_{G}R)^{T} & \mathbf{0} & \mathbf{I}
+\end{bmatrix} \\
+&=\begin{bmatrix}
+{}_{t_1}^{t_2}R & 0 & 0 \\
+-\lfloor \mathbf{{y}}^{(t_2)}-\mathbf{{y}}^{(t_1)}+\mathbf{\hat{s}}^{(t_1)}\Delta{t}_1- \mathbf{\hat{s}}^{(t_1)}\Delta{t}_2 \rfloor_{\times}({}^{t_1}_{G}R)^{T} & \mathbf{I} & \mathbf{I}(\Delta{t}_2-\Delta{t}_1） \\
+-\lfloor \mathbf{{s}}^{(t_2)}-\mathbf{{s}}^{(t_1)} \rfloor_{\times}({}^{t_1}_{G}R)^{T} & \mathbf{0} & \mathbf{I}
+\end{bmatrix} \\
+&=\begin{bmatrix}
+{}_{t_1}^{t_2}R & 0 & 0 \\
+-\lfloor {}^{G}p_{t_2}-{}^{G}p_{t_1}-{}^{G}v_{t_1}\Delta{t}_{1}^{2}+\frac{1}{2}\mathbf{g}(\Delta{t}_{1}^{2})^2 \rfloor_{\times}({}^{t_1}_{G}R)^{T} & \mathbf{I} & \mathbf{I}(\Delta{t}_{1}^{2}) \\
+-\lfloor {}^{G}v_{t_2}-{}^{G}v_{t_1}+\mathbf{g}\Delta{t}_{1}^{2} \rfloor_{\times}({}^{t_1}_{G}R)^{T} & \mathbf{0} & \mathbf{I}
+\end{bmatrix} \\
+&=\begin{bmatrix}
+{}_{t_1}^{t_2}R & 0 & 0 \\
+-\lfloor {}^{G}p_{t_2}-{}^{G}p_{t_1}-{}^{G}v_{t_1}\Delta{t}_{1}^{2}+\frac{1}{2}\mathbf{g}(\Delta{t}_{1}^{2})^2 \rfloor_{\times}({}^{t_1}_{G}R)^{T} & \mathbf{I} & \mathbf{I}(\Delta{t}_{1}^{2}) \\
+-\lfloor {}^{G}v_{t_2}-{}^{G}v_{t_1}+\mathbf{g}\Delta{t}_{1}^{2} \rfloor_{\times}({}^{t_1}_{G}R)^{T} & \mathbf{0} & \mathbf{I}
+\end{bmatrix}
+\end{aligned} \tag{23}
+$$
+于是根据锦囊1中的分析，在 t1 时刻，理想的零空间为：
+$$
+\Phi(t_1, t_0)\mathbf{N_{t_0}}=\begin{bmatrix}
+\mathbf{0}_{3} & {}^{{t_1}}_{G}\mathbf{{R}} \mathbf{g} \\
+\mathbf{I}_{3} & -\left[^{G} \mathbf{p}_{t_1}\right]_\times{\mathbf{g}} \\
+\mathbf{0}_{3} & -\left[^{G} \mathbf{v}_{t_1}\right]_\times{\mathbf{g}} \\ \hline
+\mathbf{I}_{3} & -\left[^{G} \mathbf{p}_{f_j}\right]_\times{\mathbf{g}} \\
+\end{bmatrix} \tag{24}
+$$
+那么 t2 时刻的理想状态下零空间应为：
+$$
+\begin{aligned}
+\mathbf{N_{t_2}}&=\Phi(t_2, t_1)\mathbf{N_{t_1}} \\
+&=
+\begin{bmatrix}
+{}_{t_1}^{t_2}R & 0 & 0 \\
+-\lfloor {}^{G}p_{t_2}-{}^{G}p_{t_1}-{}^{G}v_{t_1}\Delta{t}_{1}^{2}+\frac{1}{2}\mathbf{g}(\Delta{t}_{1}^{2})^2 \rfloor_{\times}({}^{t_1}_{G}R)^{T} & \mathbf{I} & \mathbf{I}(\Delta{t}_{1}^{2}) \\
+-\lfloor {}^{G}v_{t_2}-{}^{G}v_{t_1}+\mathbf{g}\Delta{t}_{1}^{2} \rfloor_{\times}({}^{t_1}_{G}R)^{T} & \mathbf{0} & \mathbf{I}
+\end{bmatrix} 
+\begin{bmatrix}
+\mathbf{0} & {}^{t_1}_{G}R\mathbf{g} \\
+\mathbf{I} & -\lfloor {}^{G}p_{t_1} \rfloor_{\times}\mathbf{g} \\
+\mathbf{0} & -\lfloor {}^{G}v_{t_1} \rfloor_{\times}\mathbf{g}
+\end{bmatrix} \\
+&= \begin{bmatrix}
+\mathbf{0} & {}^{t_2}_{G}R\mathbf{g} \\
+\mathbf{I} & -\lfloor {}^{G}p_{t_2} \rfloor_{\times}\mathbf{g} \\
+\mathbf{0} & -\lfloor {}^{G}v_{t_2} \rfloor_{\times}\mathbf{g} \\
+\end{bmatrix}
+\end{aligned}  \tag{25}
+$$
+可见在理想的情况下，零空间会跟着状态传递一起传递到当前时刻，且零空间的状态量满足一个通用的形式，该形式的物理意义为三个绝对位置和以重力方向为旋转轴的旋转。
+
+那么公式（25）是否依旧是能观性矩阵的零空间呢？此时还需要用观测矩阵进行验证，引入公式（5）所表示的理想观测矩阵可以发现：
+$$
+\begin{aligned}
+\mathbf{H}_{f_j|t_2}\mathbf{N_{t_2}}=\begin{bmatrix}\begin{array}{ccc|c}
+\lfloor{}^{G}\mathrm{p}_{f_j}-{}^{G}\mathrm{p}_{I_i}\rfloor_{\times}({}_{G}^{I_l}R)^{T} & -\mathbf{I}_{3\times3} &  \mathbf{0}_{3\times3} & \mathbf{I}_{3\times3}
+\end{array}\end{bmatrix}\begin{bmatrix}
+\mathbf{0} & {}^{t_2}_{G}R\mathbf{g} \\
+\mathbf{I} & -\lfloor {}^{G}p_{t_2} \rfloor_{\times}\mathbf{g} \\
+\mathbf{0} & -\lfloor {}^{G}v_{t_2} \rfloor_{\times}\mathbf{g} \\ \hline
+\mathbf{I} & -\left[^{G} \mathbf{p}_{f_j}\right]_\times{\mathbf{g}}
+\end{bmatrix} = \mathbf{0}
+\end{aligned} \tag{26}
+$$
+年轻人也很快就悟得了老师所想要表达的意思——在理想情况下，零空间会随着状态转移一起向前传递，且保持一个通用的形式。
+
+&nbsp;
+
+#### 锦囊3. 修改状态传递矩阵和观测矩阵，使之满足理想情况的约束
+
+从上面的分析可以知道理想情况下，整个系统应满足如下性质：
+
+1. 性质一：系统的零空间可以通过状态转移矩阵传播到当前时刻 t，且形式与初始零空间相似，由 t 时刻状态的预测值有关；
+2. 性质二：相邻时刻的零空间可以通过状态转移矩阵进行传播，且零空间的形式也满足通用形式；
+3. 性质三：通过状态传递矩阵传播到当前时刻 t 的零空间与观测矩阵正交，亦即优化问题的优化方向与零空间正交，因此优化量不会破坏系统的零空间；
+
+但是实际情况下，状态传递矩阵和观测矩阵并不能很好的满足上面的三个性质，但是根据老师的锦囊，年轻人很快便有了破解的方法：
+
+1. 对于 t 时刻，假设之前的状态都已经是理想状态了，那么该时刻所需要维护的零空间为：
+   $$
+   \mathbf{\hat{N}}_{t-1|t-1}=
+   \begin{bmatrix}
+   \mathbf{0} & {}^{t-1}_{G}R^{(t-2)}\mathbf{g} \\
+   \mathbf{I} & -\lfloor {}^{G}p_{t-1}^{(t-2)} \rfloor_{\times}\mathbf{g} \\
+   \mathbf{0} & -\lfloor {}^{G}v_{t-1}^{(t-2)} \rfloor_{\times}\mathbf{g} \\ \hline
+   \mathbf{I} & -\left[^{G} \mathbf{p}_{f_j}\right]_\times{\mathbf{g}}
+   \end{bmatrix} \tag{27}
+   $$
+   其中各个变量为 t-1 时刻的预测值，之所以为预测值，有两个原因：
+
+   - 由公式（22）可以看到理想情况下的初始零空间由纯状态传递过程传递过来，所以在 t-1 时刻的零空间由 t-1 时刻的预测值组成；
+   - 由性质三可知，理想情况下，观测矩阵与零空间正交，所以经过更新阶段不应该影响 t-1 预测阶段传递过来的零空间；
+
+2. 经过 t 时刻的预测阶段，理想的零空间应该变为：
+   $$
+   \mathbf{\hat{N}}_{t|t-1}=
+   \begin{bmatrix}
+   \mathbf{0} & {}^{t}_{G}R^{(t-1)}\mathbf{g} \\
+   \mathbf{I} & -\lfloor {}^{G}p_{t}^{(t-1)} \rfloor_{\times}\mathbf{g} \\
+   \mathbf{0} & -\lfloor {}^{G}v_{t}^{(t-1)} \rfloor_{\times}\mathbf{g} \\ \hline
+   \mathbf{I} & -\left[^{G} \mathbf{p}_{f_j}\right]_\times{\mathbf{g}}
+   \end{bmatrix}=\check{\Phi}(t,t-1) \mathbf{\hat{N}}_{t-1|t-1}  \tag{28}
+   $$
+   其中$\check{\Phi}(t,t-1)$为算法期望的状态转移矩阵；
+
+3. 在更新阶段，理想的观测矩阵应该与预测阶段之后的零空间正交：
+   $$
+   \mathbf{\check{H}}_{f_j|t}\mathbf{\hat{N}}_{t|t-1}=\mathbf{0} \tag{29}
+   $$
+   其中$\mathbf{\check{H}}_{f_j|t}$为算法期望的观测矩阵；
+
+对于上面公式（28）（29），年轻人并没有直接对方程进行求解，而是结合当前系统的状态转移矩阵$\mathbf{\hat{\Phi}}(t,t-1)$和观测矩阵$\mathbf{H}_{f_j|t}$共同求解一个最优化问题，问题形式如下：
+$$
+\begin{aligned}
+\mathop{min}_{A} &\quad \| A-\hat{A} \|_{\mathcal{F}}^{2} \\
+s.t. &\quad A\mathbf{u}=\mathbf{w} 
+\end{aligned} \tag{30}
+$$
+对优化问题（30）运用拉格朗日乘子法以及KKT条件求解对偶问题可以得到最优解为：
+$$
+A=\hat{A}-(\hat{A}\mathrm{u}-\mathrm{w})(\mathrm{u}^{T}\mathrm{u})^{-1}\mathrm{u}^{T} \tag{31}
+$$
+
+> 该部分详细推导见参考【2】
+
+&nbsp;
+
+### 小结
+
+可以看到，FEJ和OC-KF的方法都可以理论上较好的维护零空间，相对而言，FEJ有如下优缺点：
+
+1. 状态传递矩阵和观测矩阵数值上直接维护了零空间，并没有像OC-KF一样额外构建最优化问题并修改系统方程的一些东西；
+2. 自然而然的扩展到了Graph-base的方法上；
+3. 但是比较依赖初始的线性化点，如果线性化点不好，那么后续的系统可能向不好的方向发展；
+
+而OC-KF方法的优缺点如下：
+
+1. 对于线性化点的依赖性不是很强，后续的优化方向虽然和FEJ方法的零空间一样正交，但是结合了当前的状态值；
+
+2. 缺点笔者个人觉得就是比较理想，维护的都是假设理想情况的零空间；
+
+&nbsp;
+
+----
+
