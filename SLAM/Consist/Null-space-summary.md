@@ -600,4 +600,49 @@ $$
 $$
 硬说的话笔者认为这里只有EKF-Base中的update部分，而预测部分由一些PnP等操作代替了，因而无法使用像EKF那样的分析方法来分析能观性与零空间的变化。
 
-然而笔者认为FEJ的引入还是有作用的，至少整个优化问题的H矩阵被固定住了，同时
+然而笔者认为FEJ的引入还是有作用的，至少整个优化问题在求解之后的增量时的协方差矩阵被固定了，就没有所谓的实际状态没有变化，但是因为线性化点的变化导致整个增量的协方差矩阵变化的现象。
+
+> 稍微记录一下增量的协方差矩阵如何求得：
+>
+> 1. 原始问题为对数最大似然问题，即：
+>    $$
+>    \begin{aligned}
+>    E(\mathbf{x}) &= \left( \mathrm{z}-h(\mathrm{x}) \right)^{T}\mathrm{W}^{-1} \left( \mathrm{z}-h(\mathrm{x}) \right)
+>    \end{aligned} \tag{33}
+>    $$
+>    
+> 2. GN求解问题为：
+>    $$
+>    \begin{aligned}
+>    E(\mathbf{x}+\delta{\mathbf{x}}) &= \left( \mathrm{z}-h(\mathrm{x}) - \mathrm{J}\delta{\mathrm{x}} \right)^{T}\mathrm{W}^{-1} \left( \mathrm{z}-h(\mathrm{x} - \mathrm{J}\delta{\mathrm{x}}) \right) \\
+>    &= \left(e-\mathrm{J}\delta{\mathrm{x}}\right)^{T} \mathrm{W}^{-1} \left(e-\mathrm{J}\delta{\mathrm{x}}\right) \\
+>    &= e^{T}\mathrm{W}^{-1}e - e^{T}\mathrm{W}^{-1}\mathrm{J}\delta{\mathrm{x}}-(e^{T}\mathrm{W}^{-1}\mathrm{J}\delta{\mathrm{x}})^{T}+\delta{\mathrm{x}}^{T}\mathrm{J}^{T} \mathrm{W}^{-1}\mathrm{J} \delta{\mathrm{x}} 
+>    \end{aligned}\tag{34}
+>    $$
+>
+>    GN问题求得的最优解为：$\delta{\mathrm{x}}^{*}=(\mathrm{J}^{T} \mathrm{W}^{-1} \mathrm{J})^{-1}\mathrm{J}^{T}\mathrm{W}^{-1}e$
+>
+> 3. 所以对于$\delta{\mathrm{x}}$变量而言，其协方差为：
+>    $$
+>    \begin{aligned}
+>    E[(\delta{\mathrm{x}}-\delta{\mathrm{x}}^{*})(\delta{\mathrm{x}}-\delta{\mathrm{x}}^{*})^{T}] &= 
+>    E[\left((\mathrm{J}^{T} \mathrm{W}^{-1} \mathrm{J})^{-1}\mathrm{J}^{T}\mathrm{W}^{-1}(\mathrm{J\delta{x}-e})\right)^{T}\left((\mathrm{J}^{T} \mathrm{W}^{-1} \mathrm{J})^{-1}\mathrm{J}\mathrm{W}^{-1}(\mathrm{J\delta{x}-e})\right)^{T}] \\
+>    &=(\mathrm{J}^{T} \mathrm{W}^{-1} \mathrm{J})^{-1}\mathrm{J}\mathrm{W}^{-1}\underbrace{E[(\mathrm{J\delta{x}-e})(\mathrm{J\delta{x}-e})^{T}]}_{\mathrm{W}}(\mathrm{J}^{T} \mathrm{W}^{-1} \mathrm{J})^{-1}\mathrm{J}\mathrm{W}^{-1})^{T} \\
+>    &=(\mathrm{J}^{T} \mathrm{W}^{-1}\mathrm{J})^{-1}
+>    \end{aligned} \tag{35}
+>    $$
+>
+>    于是，引入了FEJ之后，因为jacobian的固定导致 $\delta{\mathrm{x}}$ 的协方差就被固定了；
+
+&nbsp;
+
+### DSO如何维护零空间
+
+因为DSO的论文中也并没有这个地方的参考，所以以下部分均是笔者结合了多篇博客以及自己的一些思考所得到的，如有问题，欢迎拍砖讨论。
+
+笔者下面的分析认为整个过程中没有变量被删除，那么对于优化问题而言，**有零空间影响的优化问题和没有零空间影响的优化问题是一样的**：
+$$
+\mathbf{E}(\mathrm{x}+\N\Delta{x}) = \mathbf{E}(\mathrm{x}) \tag{36}
+$$
+仅考虑带零空间影响的问题的话
+
