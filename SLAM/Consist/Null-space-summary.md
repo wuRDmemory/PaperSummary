@@ -571,14 +571,14 @@ $$
 可以看到，FEJ和OC-KF的方法都可以理论上较好的维护零空间，相对而言，FEJ有如下优缺点：
 
 1. 状态传递矩阵和观测矩阵数值上直接维护了零空间，并没有像OC-KF一样额外构建最优化问题并修改系统方程的一些东西；
-2. 自然而然的扩展到了Graph-base的方法上；
+2. 可以扩展到了Graph-base的方法上；
 3. 但是比较依赖初始的线性化点，如果线性化点不好，那么后续的系统可能向不好的方向发展；
 
 而OC-KF方法的优缺点如下：
 
 1. 对于线性化点的依赖性不是很强，后续的优化方向虽然和FEJ方法的零空间一样正交，但是结合了当前的状态值；
-
-2. 缺点笔者个人觉得就是比较理想，维护的都是假设理想情况的零空间；
+2. 可以扩展到Graph-base的方法上；
+3. 缺点笔者个人觉得就是比较理想，维护的都是假设理想情况的零空间；
 
 &nbsp;
 
@@ -594,13 +594,11 @@ DSO对于零空间的维护主要用了三个技巧：FEJ、增量方程的正�
 
 ### DSO为什么使用了FEJ还是用别的技术维护零空间？
 
-从上面的分析不难知道，FEJ技术是在EKF-base的系统中推导出来的，那么对于Graph-base的系统，其实这个方法稍微显得“水土不服”，原因很简单：Graph-base的方法中并没有预测部分！如果不涉及到滑动窗口方法的话，其实整个Graph-base系统本质上是一个对数最大似然问题，即：
-$$
-\mathbf{E}=\mathop{log}\mathrm{p}(\mathrm{z}|\mathrm{x}) = \| \mathrm{z}- \mathrm{h}(\mathrm{x}) \|^{2}_{\omega} \tag{32}
-$$
-硬说的话笔者认为这里只有EKF-Base中的update部分，而预测部分由一些PnP等操作代替了，因而无法使用像EKF那样的分析方法来分析能观性与零空间的变化。
+从上面的分析不难知道，FEJ技术是在EKF-base的系统中推导出来的，那么对于Graph-base的系统，其实这个方法稍微显得“水土不服”，笔者认为的本质原因在于：在优化的时候，对于同一个landmark，不可能保证所有观测到它的位姿都已经被固定在了初始线性化点上，所以导致同一个优化问题使用两个不同的线性化点，引入虚假信息。
 
-然而笔者认为FEJ的引入还是有作用的，至少整个优化问题在求解之后的增量时的协方差矩阵被固定了，就没有所谓的实际状态没有变化，但是因为线性化点的变化导致整个增量的协方差矩阵变化的现象。
+然而笔者认为FEJ的引入还是有作用的：
+
+1. 对于固定化住的位姿，其优化问题在求解之后的增量时的协方差矩阵被固定了，就没有所谓的实际状态没有变化，但是因为线性化点的变化导致整个增量的协方差矩阵变化的现象。
 
 > 稍微记录一下增量的协方差矩阵如何求得：
 >
@@ -608,7 +606,7 @@ $$
 >    $$
 >    \begin{aligned}
 >    E(\mathbf{x}) &= \left( \mathrm{z}-h(\mathrm{x}) \right)^{T}\mathrm{W}^{-1} \left( \mathrm{z}-h(\mathrm{x}) \right)
->    \end{aligned} \tag{33}
+>    \end{aligned} \tag{32}
 >    $$
 >    
 > 2. GN求解问题为：
@@ -617,7 +615,7 @@ $$
 >    E(\mathbf{x}+\delta{\mathbf{x}}) &= \left( \mathrm{z}-h(\mathrm{x}) - \mathrm{J}\delta{\mathrm{x}} \right)^{T}\mathrm{W}^{-1} \left( \mathrm{z}-h(\mathrm{x} - \mathrm{J}\delta{\mathrm{x}}) \right) \\
 >    &= \left(e-\mathrm{J}\delta{\mathrm{x}}\right)^{T} \mathrm{W}^{-1} \left(e-\mathrm{J}\delta{\mathrm{x}}\right) \\
 >    &= e^{T}\mathrm{W}^{-1}e - e^{T}\mathrm{W}^{-1}\mathrm{J}\delta{\mathrm{x}}-(e^{T}\mathrm{W}^{-1}\mathrm{J}\delta{\mathrm{x}})^{T}+\delta{\mathrm{x}}^{T}\mathrm{J}^{T} \mathrm{W}^{-1}\mathrm{J} \delta{\mathrm{x}} 
->    \end{aligned}\tag{34}
+>    \end{aligned}\tag{33}
 >    $$
 >
 >    GN问题求得的最优解为：$\delta{\mathrm{x}}^{*}=(\mathrm{J}^{T} \mathrm{W}^{-1} \mathrm{J})^{-1}\mathrm{J}^{T}\mathrm{W}^{-1}e$
@@ -629,10 +627,12 @@ $$
 >    E[\left((\mathrm{J}^{T} \mathrm{W}^{-1} \mathrm{J})^{-1}\mathrm{J}^{T}\mathrm{W}^{-1}(\mathrm{J\delta{x}-e})\right)^{T}\left((\mathrm{J}^{T} \mathrm{W}^{-1} \mathrm{J})^{-1}\mathrm{J}\mathrm{W}^{-1}(\mathrm{J\delta{x}-e})\right)^{T}] \\
 >    &=(\mathrm{J}^{T} \mathrm{W}^{-1} \mathrm{J})^{-1}\mathrm{J}\mathrm{W}^{-1}\underbrace{E[(\mathrm{J\delta{x}-e})(\mathrm{J\delta{x}-e})^{T}]}_{\mathrm{W}}(\mathrm{J}^{T} \mathrm{W}^{-1} \mathrm{J})^{-1}\mathrm{J}\mathrm{W}^{-1})^{T} \\
 >    &=(\mathrm{J}^{T} \mathrm{W}^{-1}\mathrm{J})^{-1}
->    \end{aligned} \tag{35}
+>    \end{aligned} \tag{34}
 >    $$
 >
 >    于是，引入了FEJ之后，因为jacobian的固定导致 $\delta{\mathrm{x}}$ 的协方差就被固定了；
+
+2. 边缘化阶段也不用担心因为不同线性化点引起的不一致性；
 
 &nbsp;
 
@@ -640,9 +640,34 @@ $$
 
 因为DSO的论文中也并没有这个地方的参考，所以以下部分均是笔者结合了多篇博客以及自己的一些思考所得到的，如有问题，欢迎拍砖讨论。
 
-笔者下面的分析认为整个过程中没有变量被删除，那么对于优化问题而言，**有零空间影响的优化问题和没有零空间影响的优化问题是一样的**：
+#### DSO对于零空间的建模
+
+DSO对于零空间的扰动笔者个人觉得还是比较形象化的，比如在分析EKF-base的方法时，我们通常都在讨论零空间是如何的；而DSO把零空间的扰动具象化了，即作者求得了扰动矩阵$\N$，该矩阵表示零空间中的量如何传递影响线性化点的，即：
 $$
-\mathbf{E}(\mathrm{x}+\N\Delta{x}) = \mathbf{E}(\mathrm{x}) \tag{36}
+\N^{i} = 
+\begin{cases}
+\frac{\partial{e(x_0^{i}+\theta_0)}}{\partial{\theta_0}} \\
+\frac{\partial{e(x_0^{i}+\theta_1)}}{\partial{\theta_1}} \\
+\frac{\partial{e(x_0^{i}+\theta_2)}}{\partial{\theta_2}} \\
+\frac{\partial{e(x_0^{i}+\rho_0)}}{\partial{\rho_0}} \\
+\frac{\partial{e(x_0^{i}+\rho_1)}}{\partial{\rho_1}} \\
+\frac{\partial{e(x_0^{i}+\rho_2)}}{\partial{\rho_2}} \\
+\frac{\partial{e(x_0^{i}+s\rho)}}{\partial{s}} \\
+\end{cases} \tag{35}
+$$
+这里以位姿节点 $i$ 为例，给出了零空间对于 FEJ 下的线性化点的转移矩阵，如果零空间的扰动为$\delta{x}$，那么对于节点 $i$ 的增量为$\Delta{\mathrm{x}}_{\N} = \N \delta{x}$。
+
+
+
+&nbsp;
+
+#### 增量方程对于零空间的正交化
+
+这部分主要用到了上述OC-KF中对于观测矩阵的修改技术。
+
+对于Graph-base的SLAM而言，如果使用的是基于GN方法的话，其能观性矩阵主要依赖于增量方程中的 $\mathbf{H}$ 矩阵，而根据$\mathbf{H}=\mathbf{J^{T}W^{-1}J}$，所以整个优化问题的能观性矩阵
+$$
+
 $$
 仅考虑带零空间影响的问题的话
 
