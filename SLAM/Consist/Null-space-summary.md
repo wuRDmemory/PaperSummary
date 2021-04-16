@@ -25,10 +25,10 @@
 
 ## Reference
 
-1. https://zhuanlan.zhihu.com/p/304889273 FEJ 的相关总结；
-2. https://zhuanlan.zhihu.com/p/328940891 OC-KF的相关总结；
-3. https://blog.csdn.net/wubaobao1993/article/details/105106301 DSO对于零空间维护的相关总结；
-4. https://blog.csdn.net/wubaobao1993/article/details/108354488 VINS对于零空间维护的相关总结；
+1. https://zhuanlan.zhihu.com/p/304889273 笔者关于FEJ 的相关总结；
+2. https://zhuanlan.zhihu.com/p/328940891 笔者关于OC-KF的相关总结；
+3. https://blog.csdn.net/wubaobao1993/article/details/105106301 笔者关于DSO对于零空间维护的相关总结，该总结现下看来是不太对的；
+4. https://blog.csdn.net/wubaobao1993/article/details/108354488 笔者关于VINS对于零空间维护的相关总结；
 5. Consistency of EKF-Based Visual-Inertial Odometry. MSCKF能观性的分析论文；
 
 &nbsp;
@@ -594,11 +594,11 @@ DSO对于零空间的维护主要用了三个技巧：FEJ、增量方程的正�
 
 ### DSO为什么使用了FEJ还是用别的技术维护零空间？
 
-从上面的分析不难知道，FEJ技术是在EKF-base的系统中推导出来的，那么对于Graph-base的系统，其实这个方法稍微显得“水土不服”，笔者认为的本质原因在于：在优化的时候，对于同一个landmark，不可能保证所有观测到它的位姿都已经被固定在了初始线性化点上，所以导致同一个优化问题使用两个不同的线性化点，引入虚假信息。
+从上面的分析不难知道，FEJ技术是在EKF-base的系统中推导出来的，那么对于Graph-base的系统，其实这个方法稍微显得“水土不服”，笔者认为的本质原因在于：在优化的时候，对于同一个landmark，不可能保证所有观测到它的位姿都已经被固定在了初始线性化点上（实际上对于DSO而言，当特征点不再被观测到的时候才设定FEJ的线性化点），所以导致同一个优化问题使用两个不同的线性化点，引入虚假信息。
 
-然而笔者认为FEJ的引入还是有作用的：
+笔者认为FEJ的引入作用如下：
 
-1. 对于固定化住的位姿，其优化问题在求解之后的增量时的协方差矩阵被固定了，就没有所谓的实际状态没有变化，但是因为线性化点的变化导致整个增量的协方差矩阵变化的现象。
+1. 对于固定化住的位姿，其优化问题在求解之后的增量时的协方差矩阵被固定了，就没有所谓的实际状态没有变化，但是因为线性化点的变化导致整个增量的协方差矩阵变化的现象；且如果一个优化问题不再进来新的观测和关键帧，那么其相对于初始线性化点的增量之后都会保持一样，不会变化（想象一个机器人停止在原地，那么他的所有估计变量以及协方差应该保持不变，不应该随着线性化点的变化而变化）。
 
 > 稍微记录一下增量的协方差矩阵如何求得：
 >
@@ -642,9 +642,9 @@ DSO对于零空间的维护主要用了三个技巧：FEJ、增量方程的正�
 
 #### DSO对于零空间的建模
 
-DSO对于零空间的扰动笔者个人觉得还是比较形象化的，比如在分析EKF-base的方法时，我们通常都在讨论零空间是如何的；而DSO把零空间的扰动具象化了，即作者求得了扰动矩阵$\N$，该矩阵表示零空间中的量如何传递影响线性化点的，即：
+DSO对于零空间的扰动笔者个人觉得还是比较形象化的，比如在分析EKF-base的方法时，我们通常都在讨论零空间是如何的；而DSO把零空间的扰动具象化了，即作者求得了扰动矩阵$\mathbf{N}$，该矩阵表示零空间中的量如何传递影响线性化点的，即：
 $$
-\N^{i} = 
+\mathbf{N}^{i} = 
 \begin{cases}
 \frac{\partial{e(x_0^{i}+\theta_0)}}{\partial{\theta_0}} \\
 \frac{\partial{e(x_0^{i}+\theta_1)}}{\partial{\theta_1}} \\
@@ -655,9 +655,7 @@ $$
 \frac{\partial{e(x_0^{i}+s\rho)}}{\partial{s}} \\
 \end{cases} \tag{35}
 $$
-这里以位姿节点 $i$ 为例，给出了零空间对于 FEJ 下的线性化点的转移矩阵，如果零空间的扰动为$\delta{x}$，那么对于节点 $i$ 的增量为$\Delta{\mathrm{x}}_{\N} = \N \delta{x}$。
-
-
+这里以位姿节点 $i$ 为例，给出了零空间对于线性化点的转移矩阵（DSO这里仅对迭代开始时刻的线性化点求解了转移矩阵，迭代内部没有），如果零空间的扰动为$\delta{x}$，那么对于节点 $i$ 的增量为$\Delta{\mathrm{x}}_{\mathbf{N}} = \mathbf{N} \delta{x}$。这部分具体的代码可以参见DSO的工程中的HessianBlock.cpp中的setStateZero函数。
 
 &nbsp;
 
@@ -665,9 +663,86 @@ $$
 
 这部分主要用到了上述OC-KF中对于观测矩阵的修改技术。
 
-对于Graph-base的SLAM而言，如果使用的是基于GN方法的话，其能观性矩阵主要依赖于增量方程中的 $\mathbf{H}$ 矩阵，而根据$\mathbf{H}=\mathbf{J^{T}W^{-1}J}$，所以整个优化问题的能观性矩阵
+对于Graph-base的SLAM而言，如果使用的是基于GN方法的话，其能观性矩阵主要依赖于增量方程中的 $\mathbf{H}$ 矩阵，而根据$\mathbf{H}=\mathbf{J^{T}W^{-1}J}$，所以整个优化问题的能观性矩阵的秩主要由观测矩阵$\mathbf{J}$决定。于是按照EKF-base的分析而言，这里也主要希望理想的观测矩阵可以与零空间正交。
+
+在DSO中，笔者认为作者也对理想的观测矩阵$\mathbf{J^{*}}$做了一个如公式（30）的优化问题，这里说一下约束：
+
+对于GN方法求解而言，我们希望
 $$
+\begin{aligned}
+\mathrm{E(x_0+\mathbf{N}\delta{x}+\Delta{x})}
+&=\| \mathrm{e(x+\mathbf{N}\delta{x})}+\mathbf{J}_{\mathbf{x}}\Delta{\mathrm{x}} \|^{2}
+=\| \mathrm{(e(x)+J_{x}\mathbf{N}\delta{x})}+\mathbf{J}_{\mathbf{x}}\Delta{\mathrm{x}} \|^{2} \\ 
+&= \| \mathrm{e(x)}+\mathbf{J}_{\mathbf{x}}^{*}\Delta{\mathrm{x}} \|^{2}
+=\mathrm{E^{*}(x+\Delta{x})}
+\end{aligned} \tag{36}
+$$
+也就是希望在理想的观测矩阵下，零空间的扰动与观测矩阵正交，上述公式中的线性化点笔者认为是很复杂的，有些是固定线性化点的，有些是没有固定线性化点的。
+
+ 不过这里的约束为$\mathbf{J}_{\mathrm{x_0}}^{*}\mathbf{N}\delta{\mathrm{x}}=\mathbf{0}$，不过这里因为零空间的扰动$\delta{\mathrm{x}}\neq \mathbf{0}$，所以优化问题为：
+$$
+\begin{aligned}
+\mathop{min}_{\mathbf{J}^{*}} &\quad \| \mathbf{J^{*}-J} \|^{2}_{\mathcal{F}} \\
+s.t. &\quad \mathbf{J^{*}\mathbf{N}}=\mathbf{0} 
+\end{aligned} \tag{37}
+$$
+所以最优的观测矩阵$\mathbf{J^{*}}=\mathbf{J}-\mathbf{J}\mathbf{N}(\mathbf{N}^{T}\mathbf{N})^{-1}\mathbf{N}^{T}=\mathbf{J}-\mathbf{J}\mathbf{N}\mathbf{N}^{\dagger}$，将其代入到增量方程的公式中可得：
 
 $$
-仅考虑带零空间影响的问题的话
+\begin{aligned}
+\begin{cases}
+\mathbf{H^{*}}&=\mathbf{H}-\mathbf{H}\mathbf{N}\mathbf{N}^{\dagger}-\mathbf{N}\mathbf{N}^{\dagger}\mathbf{H}+\mathbf{N}\mathbf{N}^{\dagger}\mathbf{H}\mathbf{N}\mathbf{N}^{\dagger} \\
+\mathbf{b^{*}}&=\mathbf{b}-\mathbf{N}\mathbf{N}^{\dagger}\mathbf{b}
+\end{cases}
+\end{aligned} \tag{38}
+$$
+这个部分对于 H 矩阵的推论和代码部分对不上，但是笔者实在没有找到参考或者其他的理论得到代码中的推论，笔者尝试修改代码中的部分为公式（38），最终的效果没有看出来差距，这个地方还有待研究。
+
+&nbsp;
+
+#### 增量对于零空间扰动的正交化
+
+这部分与上部分的正交化同理，作者也是构建了一个优化问题求解理想的增量：
+$$
+\begin{aligned}
+\mathop{min}_{\mathrm{\Delta{x}}^{*}} &\quad \| \mathrm{\Delta{x}}^{*}-\mathrm{\Delta{x}} \|^{2}_{2} \\
+s.t. &\quad \mathrm{(\Delta{x}^{*})^{T}\mathbf{N}}=\mathbf{0} 
+\end{aligned} \tag{39}
+$$
+所以最优的增量值为$\mathrm{\Delta{x}^{*}}=\mathrm{\Delta{x}- \mathbf{N}\mathbf{N}^{\dagger} \Delta{x}}$，注意这里的$\mathbf{N}\mathbf{N}^{\dagger}$放在了前面，主要是为了维度上的对齐。
+
+&nbsp;
+
+#### 关于正交化的一点点说明和思考
+
+上面的两个部分的约束条件均是对零空间的映射矩阵$\mathbf{N}$进行的正交化，可能有些小伙伴认为应该是对于零空间的具体扰动$\mathrm{\mathbf{N}\delta{x}}$进行正交化更好，但是在计算的过程中，算法并不知道在零空间上的扰动$\mathrm{\delta{x}}$是多少，所以对于$\mathbf{N}$进行正交化更合理；
+
+&nbsp;
+
+----
+
+## VINS对于零空间的维护
+
+相比而言，VINS对于零空间的维护就比较简单，仅仅是保证滑动窗口中的最老关键帧的yaw轴在数值上的一致性。
+
+因为旋转是可逆的，所以如果滑动窗口中最老的关键帧的姿态发生了变化，其实可以认为是机器本身的姿态没有变化，但是世界坐标系由原来的$\mathbf{w}$变为了$\hat{\mathbf{w}}$下面，算法要做的其实就是把所有的位姿再转回到原来的世界坐标系$\mathbf{w}$下；
+
+1. 优化前yaw轴为old_yaw，此时的yaw轴在原来的世界坐标系下$T_{c0}^{w}$；
+2. 优化后yaw轴为new_yaw，此时的yaw轴在新的世界坐标系下$T_{c0}^{\hat{w}}$；
+3. 所以将yaw轴转回到原来的坐标系下需要$T_{\hat{w}}^{w}=T_{c0}^{w} (T_{c0}^{\hat{w}})^{-1}$，因为算法仅仅矫正yaw轴就可以了，所以该矫正位姿仅仅为yaw=old_yaw-new_yaw的旋转矩阵或者四元数就可以了；
+
+&nbsp;
+
+----
+
+## 总结
+
+本文详细总结了几种对于零空间维护的方法，其中用处最广的是两种方法：
+
+1. Firsr-Estimate-Jacobian，在EKF-base的系统中，该方法使用预测时刻的变量作为后续的线性化点，保证同一变量使用相同时刻的值来消除因为更新带来的扰动项，保证零空间的一致性；
+2. Observability-Constraint，该方法构建优化问题以修改观测矩阵和状态传递矩阵，从而保证零空间的传递以及优化方向的正交；
+3. DSO同时使用了两个技术，极其“残忍”的维护了VO系统的零空间；
+4. VINS在数值上维护了yaw轴的一致性，但是没有用其他的技术保证零空间（甚至没有保证边缘化之后的线性化点），但是其效果可以看到对于有闭环的SLAM系统来说，可能零空间带来的影响一个闭环就制得死死的了；
+
+
 

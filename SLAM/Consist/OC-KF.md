@@ -611,7 +611,7 @@ $$
 2. 对于第二行，$\mathrm{w}=\lfloor {}^{G}p_{t-1}^{(t-2)}+{}^{G}v_{t-1}^{(t-2)}\Delta{t}-{}^{G}p_{t}^{(t-1)} \rfloor_{\times}$；
 3. 对于第三行，$\mathrm{w}=\lfloor {}^{G}v_{t-1}^{(t-2)}-{}^{G}v_{t}^{(t-1)} \rfloor_{\times}$；
 
-对于公式（30）所示的优化问题而言，采用拉格朗日乘子法和KKT条件求解对偶问题，详细步骤如下：
+对于公式（30）所示的优化问题而言，采用拉格朗日乘子法和KKT条件求解对偶问题，详细步]\\骤如下：
 
 1. 构建拉格朗日函数$L(\check{\Phi}, \alpha)=\left\| \check{\Phi}-\hat{\Phi} \right\|_{\mathcal{F}}^{2}+\alpha(\check{\Phi}\mathrm{u}-\mathrm{w})$；则原始问题为：
    $$
