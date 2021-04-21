@@ -13,7 +13,7 @@ struct LINE{
 
 int          point_idx = 0;
 cv::Mat      image;
-string       image_file = "/home/ubuntu/Projects/paper_summary/SLAM/MVG/chapter2/test/2_calibr.png";
+string       image_file = "/home/local/EUROPRO/chenhao.wu/Project/PaperSummary/SLAM/MVG/chapter2/test/2_calibr.png";
 vector<cv::Point> line_points;
 
 void metricRecovery(const vector<cv::Point>& orthogonal_line_points) {

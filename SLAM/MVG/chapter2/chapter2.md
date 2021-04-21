@@ -398,4 +398,60 @@ void affineCalibr(const vector<cv::Point>& horizon_line_points) {
 
 ### 度量矫正
 
-在进行度量矫正的时候，实验的经验是不能随意取垂直线段了，最好是分散式的，同时取两组不同方向的垂直线段（像书中给出的例子一样），其原因
+在进行度量矫正的时候，实验的经验是不能随意取垂直线段了，最好是同时**取两组夹角不同的在 原像 上垂直向量**，注意这里一定是向量哈，线段没有方向，但是向量是有方向的，比如如果我们围绕着一个在 **原像** 上是矩形的砖块**顺时针**取垂直向量，那么其实两个的夹角是一样的，如下图中黑线以及对应的红线向量，正确的方法应该是修改其中一向量的方向就把其中一个约束的夹角变为了钝角，如图中路线所示：
+
+<img src="pictures/6.png">
+
+代码如下所示：
+
+```c++
+void metricRecovery(const vector<cv::Point>& orthogonal_line_points) {
+    assert(orthogonal_line_points.size() == 8);
+
+    vector<pair<Eigen::Vector3d, Eigen::Vector3d>> orthogonal_lines;
+    for (int i = 0; i < 2; ++i) {
+        Eigen::Vector3d p0(orthogonal_line_points[4*i+0].x, orthogonal_line_points[4*i+0].y, 1.);
+        Eigen::Vector3d p1(orthogonal_line_points[4*i+1].x, orthogonal_line_points[4*i+1].y, 1.);
+        Eigen::Vector3d p2(orthogonal_line_points[4*i+2].x, orthogonal_line_points[4*i+2].y, 1.);
+        Eigen::Vector3d p3(orthogonal_line_points[4*i+3].x, orthogonal_line_points[4*i+3].y, 1.);
+
+        Eigen::Vector3d line1_dir = (p0.cross(p1)).normalized();
+        Eigen::Vector3d line2_dir = (p2.cross(p3)).normalized();
+
+        orthogonal_lines.emplace_back(line1_dir, line2_dir);
+    }
+
+    assert(orthogonal_lines.size() == 2);
+
+    Eigen::Matrix<double, 2, 3> KKT;
+    for (size_t i = 0; i < orthogonal_lines.size(); ++i) {
+        const auto&  lm = orthogonal_lines[i];
+        const double l1 = lm.first.x(), l2 = lm.first.y();
+        const double m1 = lm.second.x(), m2 = lm.second.y();
+        KKT.row(i) = Eigen::Vector3d(l1*m1, (l1*m2+l2*m1), l2*m2);
+    }
+
+    Eigen::JacobiSVD<Eigen::Matrix<double, 2, 3>> svd(KKT, Eigen::ComputeFullV);
+    Eigen::Vector3d X = svd.matrixV().col(2);
+    Eigen::Matrix2d H_A;
+    H_A << X(0), X(1), X(1), X(2);
+
+    //! chelosky decomposition and s.t. det(K)=1
+    Eigen::Matrix2d K = H_A.llt().matrixL();
+    K /= sqrt(K.determinant());
+
+    cv::Mat H = (cv::Mat_<double>(3, 3) << K(0,0), K(1,0), 0, K(0,1), K(1,1), 0, 0, 0, 1);
+    cv::Mat trans_image;
+
+    //! this H maps original image to image, and we have image.
+    //! so we need use inverse of it.
+    cv::warpPerspective(image, trans_image, H.inv(), image.size());
+
+    cv::imshow("[recovery]", trans_image);
+    cv::waitKey();
+}
+```
+
+结果如下：
+
+<img src="pictures/example/2_recovery.png">
