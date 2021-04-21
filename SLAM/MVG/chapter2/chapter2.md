@@ -60,7 +60,7 @@ $$
 
 在2D射影空间中，所有的点的坐标均为三维坐标，如果抛弃无穷远点的话，所有的点都位于x3=1的平面上，因此可以用三维坐标系中的x3=1的平面来表示所有点的分布平面，如下：
 
-<img src="../pictures/1.png">
+<img src="pictures/1.png">
 
 根据无穷远点的定义，所有的无穷远点均位于线x3=0的x-y平面上，由于点在线上的定义为两个向量的点积为0，在三维坐标系中等价于两个三维向量相互垂直，因此无穷远直线就是z轴，方向向量为[0,0,1]。
 
@@ -97,7 +97,7 @@ $$
 
 结合上面射影空间的3D表示，我们很容易发现：其实单应性矩阵在三维坐标系下与其中x3=1平面上的点进行乘积的话就是对这些点进行了整体的线性变换！换一种说法就是把x3=1这个平面进行了线性变换！如下图：
 
-<img src="../pictures/2.png">
+<img src="pictures/2.png">
 
 透视变换是在射影变换的基础上添加了一些约束得到的一种子变换，MVG书中对于透视变换仅仅是一笔带过的讲了一下，笔者认为主要是该变换还不足够特别到单独拿出来讲，因此一般情况下除了下述的几个特别变换外，基本都使用射影变换。
 
@@ -110,7 +110,7 @@ $$
 
 > PS: 当把2D射影变换当做是一个线性变换的时候，笔者就比较清晰的明白了为什么说当所有点处于一个平面的时候使用单应性矩阵（射影变换）进行初始化比较好——因为当两个像（图像点）的原像（空间点）都处于三维空间中的同一平面上时，那么其实两对**原像和像之间（3D-2D点对）**的射影变换复合成了**两个像（2D-2D）**的射影变换（单应性矩阵），如下图：
 >
-> <img src="../pictures/4.png">
+> <img src="pictures/4.png">
 >
 > 如果原像不在同一平面上，那么原像和像的匹配就不能构成射影变换。
 
@@ -164,7 +164,7 @@ A=UDV^{T}=(UV^{T})(V\Sigma V^{T})=\mathbf{R(\theta)(R(-\phi)\Sigma R(\phi))} \ta
 $$
 笔者认为该公式能很好的反映出来仿射变换在做的事情：旋转->拉伸->旋转，如下图所示：
 
-<img src="../pictures/3.png">
+<img src="pictures/3.png">
 
 下面探讨一下仿射变换对于原像的改变，也是整本书里面提到很多的不变量：
 
@@ -178,7 +178,7 @@ $$
 
 书中给出了一个表格对上面的所有的变换进行总结，表格里面也很详尽了，这里不做过多赘述：
 
-<img src="../pictures/5.png">
+<img src="pictures/5.png">
 
 &nbsp;
 
@@ -259,6 +259,8 @@ $$
 \mathbf{H_P}=
 \begin{bmatrix}1 & 0 & 0 \\ 0 & 1 & 0 \\ l_1 & l_2 & l_3 \end{bmatrix} \tag{14}
 $$
+需要注意的是：该射影矩阵是把 **像** 映射回 **原像** 的。
+
 &nbsp;
 
 ### 虚圆点的矫正——去除仿射变换
@@ -307,4 +309,93 @@ $$
 
 由公式（18）很容易得出，如果在 **像** 上选择两条在 **原像** 上垂直的线，那么就可以通过 $\mathbf{L^T C_{\infty} m}=0$ 来确定在 **像** 上的虚圆点对偶二次曲线，再由公式（17）反算出来对应的仿射变换$\mathbf{H_A}$（前提是已经进行了仿射矫正）。
 
-例如对于已经进行了仿射矫正的图像来说，选取其中
+例如对于已经进行了仿射矫正的图像来说，选取其中在欧式坐标系下垂直的两条线段 $\mathbf{L}=[l_1, l_2, l_3]^{T}$ 和 $\mathbf{m}=[m_1, m_2, m_3]^{T}$，所以由公式（18）可以得到：
+$$
+[l_1, l_2, l_3]\mathbf{C_{\infty}^{\prime}}\begin{bmatrix} m_1 \\ m_2 \\ m_3 \end{bmatrix} = \mathbf{0} \tag{19}
+$$
+其中 $\mathbf{C_{\infty}^{\prime}}$ 是在 **像** 上的虚圆点对偶二次曲线，如果 **像** 已经进行了仿射矫正，那么其与 **原像（也就是欧式空间）** 之间仅仅相差一个仿射变换$\mathbf{H_A}$，所以 **像** 上的虚圆点对偶二次曲线可以由公式（17）推导得到：
+$$
+\mathbf{C_{\infty}^{\prime}}=\mathbf{H_{A}C_{\infty}H_A^{T}}=
+\begin{bmatrix} K & 0 \\ 0 & 1 \end{bmatrix}\begin{bmatrix} I & 0 \\ 0 & 0 \end{bmatrix}\begin{bmatrix} K^{T} & 0 \\ 0 & 1 \end{bmatrix} = \begin{bmatrix} KK^{T} & 0 \\ 0 & 0 \end{bmatrix} \tag{20}
+$$
+如上面的分析，因为 K 是一个归一化的上三角矩阵，所以 $KK^{T}$ 是一个对称矩阵，仅有三个自由度，于是可以简化为：
+$$
+KK^{T}=\begin{bmatrix} s_1 & s_2 \\ s_2 & s_3 \end{bmatrix} \tag{21}
+$$
+
+
+将公式（20）（21）代入公式（19）可以得到：
+$$
+\begin{aligned}
+\begin{bmatrix}l_1 & l_2\end{bmatrix}\begin{bmatrix}s_1 & s_2 \\ s_2 & s_3\end{bmatrix} \begin{bmatrix}m_1 \\ m_2\end{bmatrix} &= 0 \\
+l_1m_1s_1+(l_1m_2+l_2m_1)s_2+l_2m_2s_3&=0 \\ 
+\begin{bmatrix}l_1m_1 & l_1m_2+l_2m_1 & l_2m_2\end{bmatrix}\begin{bmatrix}s_1 \\ s_2 \\ s_3\end{bmatrix}&=0
+\end{aligned} \tag{22}
+$$
+公式（22）告诉我们：一对在欧式空间中垂直的直线能够提供一个零空间的约束，所以两对垂直线就可以提供两个零空间的约束，如下：
+$$
+\begin{bmatrix}l_1^{1}m^{1}_1 & l^{1}_1m^{1}_2+l^{1}_2m^{1}_1 & l^{1}_2m^{1}_2 \\ l_1^{2}m^{2}_1 & l^{2}_1m^{2}_2+l^{2}_2m^{2}_1 & l^{2}_2m^{2}_2\end{bmatrix}\begin{bmatrix}s_1 \\ s_2 \\ s_3\end{bmatrix}=\mathbf{Ax}=0 \tag{23}
+$$
+上面的方程很好求解，一旦求解了$s_1, s_2, s_3$，就可以直接构建 $KK^{T}$ 矩阵，之后通过cholesky分解得到 K 矩阵，就得到了仿射矩阵$\mathbf{H_A}$。
+
+注意该仿射矩阵是把 **原像** 映射为 **像** 的。
+
+&nbsp;
+
+----
+
+## 仿真实验
+
+这里用书中的地砖例子做实验，**像** 如下：
+
+<img src="pictures/example/2.png">
+
+### 仿射矫正
+
+在进行仿射矫正的步骤，基本上可以随便取两条平行的线段（但还是建议按书中的做法，取相互垂直的线段），代码如下：
+
+```c++
+void affineCalibr(const vector<cv::Point>& horizon_line_points) {
+    assert(horizon_line_points.size() == 8);
+
+    vector<Eigen::Vector3d> inf_point_in_inf_line;
+    for (int i = 0; i < 2; ++i) {
+        Eigen::Vector3d p0(horizon_line_points[4*i+0].x, horizon_line_points[4*i+0].y, 1.);
+        Eigen::Vector3d p1(horizon_line_points[4*i+1].x, horizon_line_points[4*i+1].y, 1.);
+        Eigen::Vector3d p2(horizon_line_points[4*i+2].x, horizon_line_points[4*i+2].y, 1.);
+        Eigen::Vector3d p3(horizon_line_points[4*i+3].x, horizon_line_points[4*i+3].y, 1.);
+
+        Eigen::Vector3d line1_dir = (p0.cross(p1)).normalized();
+        Eigen::Vector3d line2_dir = (p2.cross(p3)).normalized();
+
+        inf_point_in_inf_line.push_back(line1_dir.cross(line2_dir));
+    }
+
+    assert(inf_point_in_inf_line.size() == 2);
+
+    Eigen::Vector3d inf_line_dir = (inf_point_in_inf_line[0].cross(inf_point_in_inf_line[1])).normalized();
+    //! must convert l3's sign is positive
+    //! or the orientation of your transform is wrong.
+    if (inf_line_dir.z() < 0) {
+        inf_line_dir *= -1;
+    }
+    cv::Mat H = (cv::Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, inf_line_dir[0], inf_line_dir[1], inf_line_dir[2]);
+    cout << H << endl;
+
+    cv::Mat trans_image;
+    cv::warpPerspective(image, trans_image, H, image.size());
+
+    cv::imshow("[calibr]", trans_image);
+    cv::waitKey();
+}
+```
+
+在实现的过程中，这里面一个比较大的坑是当求出的 **像** 上无穷远直线的方向与 z 轴正方向（[0,0,1]）相反的时候，一定需要把方向转回来！否则相当于你认为 **像** 的成像平面是在 z 的负方向！这时候变换矩阵会把本在 z 轴正方向的 **像** 映射到 z 轴负方向，导致图像特别小（或者说缩成了一点）。
+
+结果如下：
+
+<img src="pictures/example/2_calibr.png">
+
+### 度量矫正
+
+在进行度量矫正的时候，实验的经验是不能随意取垂直线段了，最好是分散式的，同时取两组不同方向的垂直线段（像书中给出的例子一样），其原因

@@ -1,0 +1,18 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/ubuntu/Projects/paper_summary/SLAM/MVG/chapter2/test/main.cc
+iostream
+/home/ubuntu/Projects/paper_summary/SLAM/MVG/chapter2/test/iostream
+opencv2/opencv.hpp
+/home/ubuntu/Projects/paper_summary/SLAM/MVG/chapter2/test/opencv2/opencv.hpp
+eigen3/Eigen/Core
+/home/ubuntu/Projects/paper_summary/SLAM/MVG/chapter2/test/eigen3/Eigen/Core
+eigen3/Eigen/Dense
+/home/ubuntu/Projects/paper_summary/SLAM/MVG/chapter2/test/eigen3/Eigen/Dense
+
