@@ -172,6 +172,65 @@ $$
 
 > 以上过程都是笔者的推断，没有在代码中找到该部分，因此不能保证这样的做法是对的。
 
-  
+&nbsp;  
+
+### MaskModule的refine过程
+
+作者对于上面的Bootstrapping的训练过程提出两个问题：
+
+- 移动物体在整个数据集中占的比例比较小，因此需要大量的数据增强；
+- 因为Cost Volume中的几何先验并不和Mask训练中的辅助标签直接相关，因而会影响收敛的程度；
+
+那么这里作者给出的方法就是依旧结合光度的信息来做，过程和上面的预训练有些类似：
+
+- 使用时序的图像 $I_{t'}$ 预测 $D_t$，之后多尺度的获得SSIM误差 $\mathcal{L'^{T}_{self,s}}$，因为DepthModule没有训练好，所以这部分的误差是比较大的；
+- 使用双目的图像 $I_{t^S}$ 预测 $D_{t^S}$，之后多尺度的获得SSIM误差 $\mathcal{L'^{S}_{self,s}}$，因为双目图像对于移动物体而言其实也是静止物体，所以这部分应该会比较好；
+- 根据MaskModule的预测结果 $M_t$，在时序的误差中把 $M_t$ 的部分去掉，而在双目的误差中，把 $M_t$ 的部分保留，用这样的方法来使得Mask的预测和几何先验产生足够的关联；
+- 最后再把监督的信息添加进来稳定整个误差；
+
+所以最后误差的形式为：
+$$
+\begin{aligned}
+\mathcal{L}_{m_{-} r e f}=& \sum_{s=0}^{3}\left(M_{t} \mathcal{L}_{d e p t h, s}^{\prime S}+\left(1-M_{t}\right) \mathcal{L}_{d e p t h, s}^{\prime T}\right) \\
+&+\mathcal{L}_{m a s k}
+\end{aligned} \tag{9}
+$$
+&nbsp;
+
+### DepthModule的refine过程
+
+在Mask训练好的前提下，我们就可以将Mask预测的结果用于Depth的refine中，方法和上面的refine过程一样，也是使用预测到的Mask来结合基于时序和双目的误差，如下：
+
+- 将Cost Volume经过Mask之后，通过DepthModule得到 $D_t$，这个过程如上面最后DepthModule的流程图一样，这部分会加入Image的信息；
+- 对双目直接做DepthModule得到 $D_{t^S}$，老样子，这个深度按理说是预测的比较准确的；
+- 依旧是使用 $D_t$ 和 $D_{t^S}$ 得到多尺度的SSIM误差 $\mathcal{L'^{T}_{self,s}}$ 和 $\mathcal{L'^{S}_{self,s}}$；
+- 通过预测的 $M_t$ 来使得 $\mathcal{L'^{T}_{self,s}}$ 负责动态物体之外的refine，而 $\mathcal{L'^{S}_{self,s}}$ 则负责动态物体深度的refine；
+- 但是我们这个文章是单目深度预测啊，不能在val的过程中也有双目图像的参与，因此作者会强迫 $D_t - D_{t^S}$ 在动态物体区域的深度相差尽量小，使得网络通过动态物体周围信息或者图像信息来得到动态物体部分的深度；
+
+所以最后误差的形式为，这里也是多尺度的误差，只不过论文中仅给出了一层的误差：
+$$
+\begin{aligned}
+\mathcal{L}_{d_{-} r e f, s}=&\left(1-M_{t}\right)\left(\mathcal{L}_{\text {self }, s}+\alpha \mathcal{L}_{\text {sparse }, s}\right) \\
+&+M_{t}\left(\mathcal{L}_{\text {self }, s}^{S}+\gamma\left\|D_{t}-D_{t}^{S}\right\|_{1}\right) \\
+&+\beta \mathcal{L}_{s m o o t h, s}
+\end{aligned} \tag{10}
+$$
 
 
+&nbsp;
+
+### 小结
+
+笔者在这个过程中其实觉得作者的方法还是很巧妙的，特别是在预热阶段的交叉验证，以及refine阶段通过Mask连接单双目SSIM误差的做法，refine过程作者给了一个图可以很清晰的表示出来整体的思路：
+
+<img src="pictures/5.png"/>
+
+&nbsp;
+
+----
+
+## 总结
+
+整个文章的设计思路到这里就结束了，论文其实还有一些消融实验以及CornerCase的分析值得研读，感兴趣的同学可以去读读。
+
+整体而言，笔者个人觉得还是被Daniel Cremers团队的严谨和敬业折服，论文给出了很多的分析和尝试，代码写的也颇具C++的风格，相对来说比较难读，不过开源了总比不开源要好。
