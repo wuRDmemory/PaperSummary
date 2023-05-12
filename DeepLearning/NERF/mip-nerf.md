@@ -93,8 +93,23 @@ Mip-NeRF的改进主要集中在如下两个地方：
     \begin{aligned}
     V&=\int_{0}^{2\pi}\int_{t_0}^{t_1}\int_{0}^{\dot{r}}rt^{2} dr dt d\theta \\
     &=\pi \dot{r}^{2}\frac{t_1^{3} - t_0^{3}}{3}
-    \end{aligned}
+    \end{aligned} \tag{7}
     $$
+
+    随后我们就可以计算 t 的均值和方差：
+    $$
+    \begin{aligned}
+    E(t)&=\frac{1}{V} \int_{0}^{2\pi}\int_{t_0}^{t_1}\int_{0}^{\dot{r}}t \cdot rt^{2} dr dt d\theta \\
+    &=\frac{3(t_{1}^{4}-t_0^{4})}{4(t_{1}^{3}-t_0^{3}} \\
+    \\
+    
+    E(t^2)&=\frac{1}{V} \int_{0}^{2\pi}\int_{t_0}^{t_1}\int_{0}^{\dot{r}}t^2 \cdot rt^{2} dr dt d\theta \\
+    &=\frac{3(t_{1}^{5}-t_0^{5})}{5(t_{1}^{3}-t_0^{3}} \\
+    \end{aligned} \tag{8}
+    $$
+
+    对于半径 $r$ 而言，注意这里的推理和论文的supplement material不同，而且大概率论文中是错的，参考[!here](https://github.com/google/mipnerf/issues/44) 
+
 
 
 
