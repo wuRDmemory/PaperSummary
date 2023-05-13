@@ -2,8 +2,7 @@
 
 ## Reference
 
-1. Mipmap的讲解： https://blog.csdn.net/qq_42428486/article/details/118856697；
-2. k
+1. Mipmap的讲解： https://blog.csdn.net/qq_42428486/article/details/118856697
 
 ## Abstract
 
@@ -33,11 +32,11 @@ Mip-NeRF 的主要思路如下图所示：
     \text{where } T_k=exp(-\sum_{k'<k}\tau_{k'}(t_{k'+1}-t_{k'})) \tag{2}
     $$
 
-3. loss构建，主要分两个部分，一个是coarse网络，一个是finetune网络
+3. loss构建，主要分两个部分，一个是coarse网络，一个是finetune网络：
     $$
     \begin{aligned}
     \mathop{argmin}_{\theta^{c}, \theta^{f}} \sum_{\mathbf{r} \subset \mathcal{R}} & \left(\| C^{*}(\mathbf{r}) - C(\mathbf{r}; \Theta^{c}, \mathbf{t}^{c}) \|^{2}_{2} \\
-             +  \| C^{*}(\mathbf{r}) - C(\mathbf{r}; \Theta^{f}, sort{\mathbf{t}^{c} \or \mathbf{t}^{f}}) \|^{2}_{2} \right)
+             +  \| C^{*}(\mathbf{r}) - C(\mathbf{r}; \Theta^{f}, sort{(\mathbf{t}^{c} + \mathbf{t}^{f}}) \|^{2}_{2} \right)
     \end{aligned} \tag{3}
     $$
 
@@ -65,14 +64,15 @@ Mip-NeRF的改进主要集中在如下两个地方：
 
 1. 对于3D空间中的点 $\mathrm{x}$ 而言，首先判断该点是否在 **某个相机** 的 **某个视角** 下的 [t0~t1] 区间内，公式如下：
     $$
-    \mathbf{F}(\mathrm{x, o, d}, \dot{r}, t_0, t_1)=\mathbb{1} \left\{  \underbrace{ \left( t_0 < \mathbf{\frac{d^{T}(x-o)}{ \left| d \right|^{2}_{2} }} < t_1 \right) }_{点在t_0~t_1范围内} \and \underbrace{ \left( \mathbf{\frac{d^{T}(x-o)}{  \left| d \right|_{2}} > \frac{1}{ \sqrt{1+(\dot{r}/\left\| d \right\|)^{2}} }  } \right) }_{点在视锥范围内} \right\} \tag{4}
+    \mathbf{F}(\mathrm{x, o, d}, \dot{r}, t_0, t_1)=\mathbb{1} \left\{  \underbrace{ \left( t_0 < \mathbf{\frac{d^{T}(x-o)}{ \left| d \right|^{2}_{2} }} < t_1 \right) }_{点在t_0~t_1范围内} \bigcup \underbrace{ \left( \mathbf{\frac{d^{T}(x-o)}{  \left| d \right|_{2}} > \frac{1}{ \sqrt{1+(\dot{r}/\left\| d \right\|)^{2}} }  } \right) }_{点在视锥范围内} \right\} \tag{4}
     $$
     
+
 对于所有满足上述条件的采样点，其position encoding的表示如下, 其中 $\mathcal{r}(x)$ 和NeRF一样，是将采样点映射到高维空间的操作：
-    $$
+$$
     \mathcal{r}^{*}(\mathbf{o, d}, \dot{r}, t_0, t_1)=\frac{\int{\mathcal{r}(\mathbf{x})\mathbf{F}(\mathbf{x, o, d}, \dot{r}, t_0, t_1)d\mathbf{x}}}{\int{\mathbf{F}(\mathbf{x, o, d}, \dot{r}, t_0, t_1)d\mathbf{x}}} \tag{5}
-    $$
-    
+$$
+
 2. 到这里我们能够发现，公式（5）有一个比较大的问题，就是需要先知道采样点 x 的位置，随后才能计算整个区间的分布，这和NeRF的思路完全相反，因此我们需要把思路正过来，即通过一些参数来表达空间volume的积分，示意图如下：
    
     <img src="mip-nerf/3.png"/>
@@ -81,7 +81,7 @@ Mip-NeRF的改进主要集中在如下两个地方：
     $$
     \begin{aligned}
     (x, y, z) &= \psi(r, t, \theta)=(rtcos(\theta), rtsin(\theta), t) \\
-    dxdydz &= \left| \frac{\part{(x, y, z)}}{\part{(r, t, \theta)}} \right|dr dt d\theta \\
+    dxdydz &= \left| \frac{\partial{(x, y, z)}}{\partial{(r, t, \theta)}} \right| dr dt d\theta \\
            &= \begin{vmatrix} tcos(\theta) & tsin(\theta) & 0 \\ rcos(\theta) & rsin(\theta) & 1 \\ -rtsin(\theta) & rtcos(\theta) & 0 \end{vmatrix} dr dt d\theta \\
            &= (rt^{2}cos^{2}(\theta) + rt^2sin^{2}(\theta)) dr dt d\theta \\
            &= rt^{2} dr dt d\theta
@@ -108,10 +108,77 @@ Mip-NeRF的改进主要集中在如下两个地方：
     \end{aligned} \tag{8}
     $$
 
-    对于半径 $r$ 而言，注意这里的推理和论文的supplement material不同，而且大概率论文中是错的，参考[!here](https://github.com/google/mipnerf/issues/44) 
+    对于半径 $r$ 而言，作者其实想表示的是x+y的方差(因为是个圆，其实x y的方差是相等的)，论文中的公式有错，参考[!here](https://github.com/google/mipnerf/issues/44) 
+    $$
+    \begin{aligned}
+    E(y)=E(x)&=\frac{1}{V} \int_{0}^{2\pi}\int_{t_0}^{t_1}\int_{0}^{\dot{r}}(rtcos(\theta)) \cdot rt^{2} dr dt d\theta \\
+    &=0 \\
+
+    E(y^2)=E(x^2)&=\frac{1}{V} \int_{0}^{2\pi}\int_{t_0}^{t_1}\int_{0}^{\dot{r}}(rtcos(\theta))^{2} \cdot rt^{2} dr dt d\theta \\
+    &=\frac{\dot{r}^{2}}{4}\cdot \frac{3(t_1^5-t_0^5)}{5(t_1^3-t_0^3)} \\
+
+    \Downarrow \\
+
+    \sigma_{r}&=E(x^2)-E(x)^{2} + E(y^2)-E(y)^2=\frac{\dot{r}^{2}}{2}\cdot \frac{3(t_1^5-t_0^5)}{5(t_1^3-t_0^3)}
+    \end{aligned} \tag{9}
+    $$
+
+    剩下的主要是变换相关的，主要是为了数值稳定性，这里就不多赘述了，综上可知，对于空间中的视锥采样点而言：
+    1. 我们可以用极坐标的方式来等价代换；
+    2. 其中位置 t 和 半径 r 分布满足：
+    $$
+    \mu_{t}=t_{\mu}+\frac{2t_{\mu}t_{\delta}^{2}}{3t_{\mu}^{2}+t_{\delta}^{2}} \quad \sigma_{t}^{2}=\frac{t_{\delta}^{2}}{3}-\frac{4t_{\delta}^4(12t_{\mu}^2-t_{\delta}^2)}{15(3t_{\mu}^2+t_{\delta}^2)^2} \quad \sigma_{r}^2=\dot{r}^{2}\left( \frac{t_{\mu}^2}{4} + \frac{5t_{\delta}^2}{12} - \frac{4t_{\delta}^4}{15(3_{t_{\mu}^2}+t_{\delta}^2)} \right)
+    $$
+
+3. 所以对于给定了一个采样区间[t0~t1]来说，该conical frustum内的所有点可以按照如下分布来表示：
+    $$
+    \mathbf{\mu}=\mathbf{o}+\mu_t\mathbf{d} \quad \Sigma=\sigma_t^2(\mathbf{dd^T})+\sigma_{r}^2\left( I-\frac{\mathbf{dd^{T}}}{\left\| d \right\|_{2}^{2}} \right) \tag{10}
+    $$
+
+    > PS: 后面关于半径这个部分的公式没有特别理清楚。。。
+
+&nbsp;
+
+#### IPE的表示
+
+这部分的推导其实就不是那么的重要了，在NeRF中，我们对一个点进行positional encoding，但是现在我们获得了一个分布，自然可以用分布来代替conical frustum中所有点的PE，这里直接给出公式（推导不难，感兴趣看论文即可）：
+$$
+\begin{aligned}
+\mathcal{r}(\mu, \Sigma) &= E_{\mathbf{x}~\mathcal{N}(\mu_{\mathcal{r}}, \Sigma_{\mathcal{r}})}(\mathcal{r}(\mathbf{x})) \\
+&= \begin{bmatrix}
+sin(\mu_{\mathcal{r}}) \circ exp(-\frac{1}{2}diag(\Sigma_{\mathcal{r}})) \\
+cos(\mu_{\mathcal{r}}) \circ exp(-\frac{1}{2}diag(\Sigma_{\mathcal{r}}))
+\end{bmatrix}
+\end{aligned} \tag{11}
+$$
 
 
 
+下图是positional encoding的示意图，可以看到Mip-NeRF的表达确实更加的general一些；
+
+<img src="mip-nerf/4.png"/>
+
+&nbsp;
+
+#### 多尺度的加入
+
+因为mip-NeRF主要想借助mip-maps的思路来解决锯齿的问题，所以在训练的时候，mip-NeRF对多尺度的图像进行训练，论文中取4层多尺度的图像。
 
 
+&nbsp;
+
+----
+
+### Mip-NeRF的结构和训练
+
+Mip-NeRF训练如下：
+
+$$
+\min_{\Theta}=\sum_{\mathbf{r}\in R}(\lambda\left\| C^{*}(\mathbf{r}-C(\mathbf{r};\Theta,t^c))\right\|^2_2 + \left\| C^{*}(\mathbf{r}-C(\mathbf{r};\Theta,t^f))\right\|^2_2) \tag{12}
+$$
+
+对于fine sample的采样上，作者在采样的时候采用如下的方法：
+$$
+w_{k}^{'}=\frac{1}{2}(max(w_{k-1}, w_k) + max(w_k, w_{k+1})) + \alpha \tag{13}
+$$
 
