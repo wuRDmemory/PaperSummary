@@ -164,6 +164,7 @@ $$
 
 因为mip-NeRF主要想借助mip-maps的思路来解决锯齿的问题，所以在训练的时候，mip-NeRF对多尺度的图像进行训练，论文中取4层多尺度的图像。
 
+<img src="mip-nerf/8.png">
 
 &nbsp;
 
@@ -182,3 +183,24 @@ $$
 w_{k}^{'}=\frac{1}{2}(max(w_{k-1}, w_k) + max(w_k, w_{k+1})) + \alpha \tag{13}
 $$
 
+&nbsp;
+
+----
+### 一些实验结果
+
+mip-NeRF的训练结果（多尺度对比）如下，可以看到细节的恢复比NeRF要好很多
+
+<img src="mip-nerf/6.png">
+
+最后的对比/消融实验也表明mip-NeRF各个提升的有效性:
+
+<img src="mip-nerf/7.png">
+
+&nbsp;
+
+----
+
+## Conclusion
+总体来看，文章的思路和改进点都是比较明确的：
+1. 通过mip-maps的思想来提高抗锯齿能力；
+2. 使用IPE代替PE达到更好的采样点表示效果；
