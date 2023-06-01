@@ -1,11 +1,3 @@
-<!--
- * @Author: Chenhao Wu wuch2039@163.com
- * @Date: 2023-05-18 07:39:26
- * @LastEditors: Chenhao Wu wuch2039@163.com
- * @LastEditTime: 2023-05-19 08:07:03
- * @FilePath: /paper_summary/DeepLearning/NERF/mip-nerf-360.md
- * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
--->
 # Mip-NeRF 360: Unbounded Anti-Aliased Neural Radiance Fields
 
 ---
@@ -37,6 +29,36 @@
 ### 针对场景和射线的参数化
 这里主要有如下几个改进点：
 
-1. 借鉴NDC的思路，对射线的采样时使用逆深度（视差）的均匀采样，这样的好处是远距离的采样策略更加的合适（远处的场景视差小，相比于近处的场景，一个像素所代表的距离更远）；
+1. 借鉴NDC的思路，对射线的采样时使用逆深度（视差）的均匀采样，这样的好处是远距离的采样策略更加的合适（远处的场景视差小，相比于近处的场景，一个像素所代表的距离更远），作者这里使用一个映射函数将 t 空间映射到 s 空间：
+    $$
+    \begin{equation}
+    \mathrm{s=\frac{g(t)-g(t_n)}{g(t_f) - g(t_n)}} \quad \text{where} \quad \mathrm{g=\frac{1}{x}}
+    \end{equation}
+    $$
 
-2. 
+2. 使用一个叫做contract函数，将ray的高斯采样变得限制在一个有界场景中，contract函数如下：
+    $$
+    \begin{equation}
+    \mathrm{contract(x)}=
+    \begin{aligned}
+    \begin{cases}
+    \mathrm{x}   \quad & \|\mathrm{x}\| \le 1 \\
+    \left( 2-\frac{1}{\| \mathrm{x} \|} \right) \mathrm{\frac{x}{\| x \|}} \quad & \| \mathrm{x} \| \gt 1 
+    \end{cases}
+    \end{aligned}
+    \end{equation}
+    $$
+    该函数主要是将远处的物体（作者这里定义为 1m 以外的场景或者物体）warp到一个单位为 2 的球体里面，如下图所示：
+    <img src="mip-nerf-360/1.png"/>
+
+    笔者对于这个图像（或者说函数）的理解更多的是作者在这里做了一个圆形（球形）的畸变，把整个场景的成像机制当做是360度全景相机的成像，这样就把整个unbound的场景“限制”在了一个有限的球面中。
+
+
+&nbsp;
+
+### 针对效率问题的在线蒸馏
+
+对于无边界场景而言，实际上采样的好坏异常的重要，因为边界比较大，因此采样点中可能很多都是“空气点”，作者解决问题的思路也很简单，提出了一个proposal-MLP（类似于检测框架中的proposal bounding box），该网络不预测color，只使用一个轻量的MLP来提供分布信息 $\mathrm{\hat{w}}$, 因为该网络比较的轻量，所以作者在每次迭代的时候就多次调用，生成更多的采样来达到“细化”的目的。整个流程图如下：
+
+<img src="mip-nerf-360/2.png">
+
