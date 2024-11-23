@@ -8,8 +8,12 @@
 3. 不止有3D的网络，同时还推出了2D网络
 <img src="pictures/1.png"/>
 
-## 具体方法
+- github: https://github.com/cogsys-tuebingen/mobilestereonet
+- paper: https://arxiv.org/pdf/2108.09770
 
+----
+
+## 具体方法
 ### 轻量化的block设计
 这部分没有特别多需要讲的，就是把mobilenet的block扩展为3D的模块，如下：
 <img src="pictures/2.png"/>
@@ -126,3 +130,29 @@ volume = torch.squeeze(volume, 1)
 - Pre-hourglass: 使用t=3的参数；
 - hourglass: 2D和3D使用的通道数略有差别，使用t=2的参数；
 
+------
+
+## 实验结果
+
+### SceneFlow数据集
+结果如下，可以看到：
+- 2D的方法确实在性能和参数上都取得了非常好的效果；
+- 3D的方法虽然EPE指标不算最好，但是整体的效果-速度的trade-off也确实做到了最好了；
+
+<img src="pictures/10.png"/>
+
+
+### KITTI2015数据集
+结果如下，可以看到基本上也取得了非常好的trade-off
+
+<img src="pictures/9.png"/>
+
+
+---
+
+## 总结
+本文主要介绍了MobileStereoNet这个网络，对于该网络而言：
+- 3D网络pipeline可以认为更多的是把block做了轻量化，没有做特别独特的改进；
+- 2D网络做了一些自己独特的设计，取得了速度-精度都很好的trade-off；
+
+下篇我们来看看今年比较新的一篇文章：LightStereo
